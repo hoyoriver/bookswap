@@ -239,6 +239,33 @@
     }
     .invite-actions { display: flex; gap: 8px; margin-left: auto; }
 
+    /* ── 교환 알림 배너 ── */
+    .rotation-banner {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      background: #fff8e6; border: 1px solid #f5c842; border-radius: 12px;
+      padding: 14px 20px; margin-bottom: 24px;
+    }
+    .rotation-banner-text { font-size: 14px; font-weight: 600; color: #5a4300; }
+    .rotation-banner-sub { font-size: 12px; color: #7a6020; margin-top: 2px; }
+
+    /* ── 순서 수정 모달 ── */
+    .order-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;
+    }
+    .order-num { font-size: 13px; font-weight: 700; color: var(--muted); min-width: 20px; text-align: center; }
+    .order-arrow { font-size: 12px; color: var(--muted); margin: 0 4px; }
+    .order-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .order-btns { display: flex; gap: 4px; }
+    .order-btn {
+      width: 28px; height: 28px; border: 1px solid var(--border); background: var(--surface);
+      border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center;
+      justify-content: center; transition: all .12s; color: var(--text);
+    }
+    .order-btn:hover:not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .order-btn:disabled { opacity: .3; cursor: default; }
+    .order-hint { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+
     /* ── 모바일 탭바 ── */
     .mobile-tabbar {
       display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
@@ -470,6 +497,19 @@
     <div class="modal-footer" style="justify-content:center">
       <button class="btn btn-ghost" onclick="closeModal('modal-join')">취소</button>
       <button class="btn" onclick="confirmJoin()">모임 합류하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 순서 수정 모달 ── -->
+<div class="modal-backdrop" id="modal-order" onclick="closeBackdrop(event,'modal-order')">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">순환 순서 수정</div>
+    <p class="order-hint">순서대로 책이 다음 사람에게 전달됩니다 (마지막 → 첫 번째 순환)</p>
+    <div id="order-list"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-order')">취소</button>
+      <button class="btn" onclick="saveOrder()">저장</button>
     </div>
   </div>
 </div>
@@ -746,13 +786,22 @@ function renderDetail(moimId) {
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span class="dday-badge ${ddayClass}">${dday.label}</span>
-        <button class="btn btn-sm" onclick="openExchangeModal('${m.id}')">🔄 교환하기</button>
+        <button class="btn btn-sm btn-ghost" onclick="openOrderModal('${m.id}')">순서 수정</button>
         <button class="btn btn-sm btn-ghost" onclick="openAddBookModal('${m.id}')">+ 책 추가</button>
         ${m.status === '진행중'
           ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="closeMoim('${m.id}')">모임 종료</button>`
           : '<span class="status-badge status-완료">완료된 모임</span>'}
       </div>
     </div>
+
+    ${dday.n === 0 && m.status === '진행중' ? `
+    <div class="rotation-banner">
+      <div>
+        <div class="rotation-banner-text">📅 교환일이 도달했어요!</div>
+        <div class="rotation-banner-sub">멤버 순서대로 책을 자동 순환 처리합니다</div>
+      </div>
+      <button class="btn btn-sm" onclick="triggerAutoRotate('${m.id}')">지금 순환하기</button>
+    </div>` : ''}
 
     <div class="section-title">초대 코드</div>
     <div class="invite-box">
@@ -930,6 +979,87 @@ async function saveAddBook() {
   await upsertMoim(m);
   closeModal('modal-add-book');
   renderDetail(currentMoimId);
+}
+
+// ── 자동 순환 ────────────────────────────────────────────
+async function triggerAutoRotate(moimId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  if (!confirm(`"${m.name}" 모임의 책을 순서대로 순환할까요?`)) return;
+
+  const today = todayStr();
+  const members = m.members;
+  if (!m.currentHolder) m.currentHolder = {};
+
+  // 각 멤버가 가진 책 → 다음 멤버에게 이동 (circular)
+  const newHolder = {};
+  members.forEach((mem, i) => {
+    const nextMem = members[(i + 1) % members.length];
+    Object.entries(m.currentHolder).forEach(([bookId, holderId]) => {
+      if (holderId === mem.id) {
+        newHolder[bookId] = nextMem.id;
+        if (!m.exchanges) m.exchanges = [];
+        m.exchanges.push({ bookId, fromId: mem.id, toId: nextMem.id, date: today });
+      }
+    });
+  });
+
+  // 미배정 책은 첫 번째 멤버에게
+  m.books.forEach(b => {
+    if (!m.currentHolder[b.id] && !newHolder[b.id]) {
+      newHolder[b.id] = members[0]?.id;
+    }
+  });
+
+  m.currentHolder = { ...m.currentHolder, ...newHolder };
+  m.lastExchangeDate = today;
+
+  await upsertMoim(m);
+  renderDetail(moimId);
+  toast('✅ 순환 처리 완료!');
+}
+
+// ── 순서 수정 ────────────────────────────────────────────
+let tmpOrderMembers = [];
+
+function openOrderModal(moimId) {
+  currentMoimId = moimId;
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  tmpOrderMembers = m.members.map(mem => ({ ...mem }));
+  renderOrderList();
+  openModal('modal-order');
+}
+
+function renderOrderList() {
+  const last = tmpOrderMembers.length - 1;
+  document.getElementById('order-list').innerHTML = tmpOrderMembers.map((mem, i) => `
+    <div class="order-item">
+      <span class="order-num">${i + 1}</span>
+      <span class="order-name">${esc(mem.name)}</span>
+      ${i < last ? `<span class="order-arrow">→</span>` : `<span class="order-arrow" style="color:var(--accent)">↩</span>`}
+      <div class="order-btns">
+        <button class="order-btn" onclick="moveOrder(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="order-btn" onclick="moveOrder(${i},1)" ${i === last ? 'disabled' : ''}>↓</button>
+      </div>
+    </div>`).join('');
+}
+
+function moveOrder(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= tmpOrderMembers.length) return;
+  [tmpOrderMembers[i], tmpOrderMembers[j]] = [tmpOrderMembers[j], tmpOrderMembers[i]];
+  renderOrderList();
+}
+
+async function saveOrder() {
+  const m = moims.find(x => x.id === currentMoimId);
+  if (!m) return;
+  m.members = tmpOrderMembers;
+  await upsertMoim(m);
+  closeModal('modal-order');
+  renderDetail(currentMoimId);
+  toast('순서가 저장됐어요');
 }
 
 // ── 책 수정 ─────────────────────────────────────────────
