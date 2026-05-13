@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bookswap</title>
+  <style>
+    :root {
+      --bg: #f7f5f2;
+      --surface: #ffffff;
+      --border: #e8e4df;
+      --text: #1a1a1a;
+      --muted: #8a8480;
+      --accent: #3d3530;
+      --accent2: #6b5a4e;
+      --green: #d4e8d4; --green-t: #3a6b3a;
+      --blue: #d4dde8; --blue-t: #3a4f6b;
+      --yellow: #fff3cd; --yellow-t: #856404;
+      --red: #f8d7da; --red-t: #842029;
+      --font: 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+    /* ── 레이아웃 ── */
+    .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+    /* ── 사이드바 ── */
+    .sidebar {
+      background: var(--surface); border-right: 1px solid var(--border);
+      padding: 32px 0; position: sticky; top: 0; height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .logo { padding: 0 24px 32px; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--accent); }
+    .nav-section { padding: 0 12px; flex: 1; }
+    .nav-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 0 12px; margin-bottom: 4px; margin-top: 20px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 13.5px; transition: all .15s; user-select: none; }
+    .nav-item:hover { background: var(--bg); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
+    .nav-count { margin-left: auto; background: var(--border); border-radius: 10px; padding: 1px 7px; font-size: 11px; color: var(--muted); }
+    .nav-item.active .nav-count { background: rgba(255,255,255,.2); color: #fff; }
+
+    /* ── 메인 ── */
+    .main { padding: 40px 48px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+    .page-title { font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* ── 버튼 ── */
+    .btn { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: var(--font); transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg); color: var(--text); opacity: 1; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-danger { background: #c0392b; }
+
+    /* ── 홈 카드 ── */
+    .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .moim-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 24px; cursor: pointer; transition: all .15s;
+    }
+    .moim-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.07); }
+    .moim-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .moim-card-name { font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
+    .dday-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
+    .dday-soon { background: var(--red); color: var(--red-t); }
+    .dday-normal { background: var(--yellow); color: var(--yellow-t); }
+    .dday-ok { background: var(--green); color: var(--green-t); }
+    .moim-card-meta { display: flex; gap: 16px; margin-bottom: 16px; }
+    .meta-item { font-size: 12.5px; color: var(--muted); }
+    .meta-item strong { color: var(--text); font-weight: 600; }
+    .member-book-list { display: flex; flex-direction: column; gap: 6px; }
+    .member-book-row { display: flex; align-items: center; justify-content: space-between; }
+    .member-name-sm { font-size: 12.5px; font-weight: 500; }
+    .book-chip { font-size: 11.5px; color: var(--muted); background: var(--bg); padding: 3px 9px; border-radius: 6px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── 모임 목록 ── */
+    .moim-list { display: flex; flex-direction: column; gap: 12px; }
+    .moim-list-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px 24px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px;
+      cursor: pointer; transition: all .15s;
+    }
+    .moim-list-item:hover { border-color: var(--accent); }
+    .moim-list-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .moim-list-meta { font-size: 12.5px; color: var(--muted); }
+    .status-badge { font-size: 11.5px; padding: 4px 10px; border-radius: 6px; font-weight: 500; }
+    .status-진행중 { background: var(--green); color: var(--green-t); }
+    .status-완료 { background: var(--blue); color: var(--blue-t); }
+
+    /* ── 필터 바 ── */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .filter-chip { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; cursor: pointer; color: var(--muted); transition: all .15s; }
+    .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── 모임 상세 ── */
+    .detail-back { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; cursor: pointer; margin-bottom: 24px; }
+    .detail-back:hover { color: var(--text); }
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+    .detail-title { font-size: 24px; font-weight: 700; letter-spacing: -.5px; margin-bottom: 6px; }
+
+    .detail-info-row { display: flex; gap: 24px; flex-wrap: wrap; }
+    .detail-info-item { font-size: 13px; color: var(--muted); }
+    .detail-info-item strong { color: var(--text); }
+
+    .section-title { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 14px; margin-top: 32px; }
+
+    /* 순환 시각화 */
+    .cycle-visual { display: flex; align-items: center; gap: 0; flex-wrap: wrap; gap: 4px; }
+    .cycle-node {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 14px; text-align: center; min-width: 80px;
+    }
+    .cycle-node.active-node { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .cycle-node-name { font-size: 12.5px; font-weight: 600; }
+    .cycle-node-book { font-size: 11px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+    .cycle-node.active-node .cycle-node-book { color: rgba(255,255,255,.7); }
+    .cycle-arrow { font-size: 18px; color: var(--muted); }
+
+    /* 멤버-책 테이블 */
+    .holder-table { width: 100%; border-collapse: collapse; }
+    .holder-table th { font-size: 11.5px; color: var(--muted); font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .holder-table td { font-size: 13.5px; padding: 12px 12px; border-bottom: 1px solid var(--bg); }
+    .holder-table tr:last-child td { border-bottom: none; }
+    .holder-table tr:hover td { background: var(--bg); }
+
+    /* 교환 이력 */
+    .exchange-log { display: flex; flex-direction: column; gap: 8px; }
+    .log-item { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 10px 14px; background: var(--surface); border-radius: 8px; }
+    .log-date { color: var(--muted); font-size: 12px; min-width: 80px; }
+    .log-arrow { color: var(--muted); }
+
+    /* ── 내 기록 ── */
+    .my-books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .my-book-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .my-book-title { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; line-height: 1.4; }
+    .my-book-moim { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+
+    /* ── 통계 ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .stat-num { font-size: 28px; font-weight: 700; letter-spacing: -1px; margin-bottom: 4px; }
+    .stat-label { font-size: 12.5px; color: var(--muted); }
+    .moim-stat-list { display: flex; flex-direction: column; gap: 10px; }
+    .moim-stat-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .moim-stat-name { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+    .moim-stat-sub { font-size: 12px; color: var(--muted); }
+    .moim-stat-nums { display: flex; gap: 20px; }
+    .stat-mini { text-align: center; }
+    .stat-mini-num { font-size: 18px; font-weight: 700; }
+    .stat-mini-label { font-size: 11px; color: var(--muted); }
+
+    /* ── 빈 상태 ── */
+    .empty-state { text-align: center; padding: 80px 0; color: var(--muted); }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state p { margin-bottom: 20px; line-height: 1.6; }
+
+    /* ── 모달 ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 100; align-items: center; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); border-radius: 16px; padding: 32px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+    .form-group { margin-bottom: 18px; }
+    .form-label { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; display: block; }
+    .form-input, .form-select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font); font-size: 13.5px; color: var(--text); background: var(--surface); outline: none; transition: border-color .15s; }
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+    .input-with-btn { display: flex; gap: 8px; }
+    .input-with-btn .form-input { flex: 1; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag-item { display: flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12.5px; }
+    .tag-remove { cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; }
+    .tag-remove:hover { color: #c0392b; }
+    .cycle-input-row { display: flex; align-items: center; gap: 8px; }
+    .cycle-input-row .form-input { width: 80px; text-align: center; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+    /* ── 교환 실행 모달 ── */
+    .exchange-form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13.5px; }
+    .exchange-form-row select { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font); font-size: 13px; outline: none; }
+    .exchange-form-row select:focus { border-color: var(--accent); }
+
+    /* ── 책 검색 드롭다운 ── */
+    .book-search-wrap { position: relative; }
+    .book-search-results {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.1); z-index: 200; max-height: 280px; overflow-y: auto;
+    }
+    .book-search-results.open { display: block; }
+    .book-result-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      cursor: pointer; transition: background .12s; border-bottom: 1px solid var(--bg);
+    }
+    .book-result-item:last-child { border-bottom: none; }
+    .book-result-item:hover { background: var(--bg); }
+    .book-result-thumb {
+      width: 36px; height: 52px; object-fit: cover; border-radius: 4px;
+      background: var(--bg); flex-shrink: 0;
+    }
+    .book-result-thumb-empty { width: 36px; height: 52px; background: var(--bg); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .book-result-info { flex: 1; min-width: 0; }
+    .book-result-title { font-size: 13px; font-weight: 600; line-height: 1.3; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .book-result-author { font-size: 11.5px; color: var(--muted); }
+    .book-search-status { padding: 14px; text-align: center; font-size: 12.5px; color: var(--muted); }
+
+    /* 태그 아이템에 썸네일 */
+    .tag-thumb { width: 20px; height: 28px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
+
+    @media (max-width: 768px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main { padding: 24px 20px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 사이드바 -->
+  <aside class="sidebar">
+    <div class="logo">📚 bookswap</div>
+    <nav class="nav-section">
+      <div class="nav-label">메뉴</div>
+      <div class="nav-item active" onclick="navigate('home')">
+        <span class="icon">🏠</span> 홈
+      </div>
+      <div class="nav-item" onclick="navigate('moim')">
+        <span class="icon">👥</span> 모임
+        <span class="nav-count" id="cnt-moim">0</span>
+      </div>
+      <div class="nav-item" onclick="navigate('mybooks')">
+        <span class="icon">📖</span> 내 기록
+      </div>
+      <div class="nav-item" onclick="navigate('stats')">
+        <span class="icon">📊</span> 통계
+      </div>
+    </nav>
+  </aside>
+
+  <!-- 메인 -->
+  <main class="main">
+
+    <!-- 홈 -->
+    <div class="page active" id="page-home">
+      <div class="page-header">
+        <div>
+          <div class="page-title">안녕하세요 👋</div>
+          <div class="page-sub">진행 중인 모임의 교환 현황을 확인하세요</div>
+        </div>
+        <button class="btn" onclick="openCreateMoim()">+ 모임 만들기</button>
+      </div>
+      <div class="home-grid" id="home-grid"></div>
+    </div>
+
+    <!-- 모임 목록 -->
+    <div class="page" id="page-moim">
+      <div class="page-header">
+        <div>
+          <div class="page-title">모임</div>
+          <div class="page-sub">교환독서 모임을 만들고 관리해요</div>
+        </div>
+        <button class="btn" onclick="openCreateMoim()">+ 모임 만들기</button>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-chip active" onclick="filterMoim('all',this)">전체</div>
+        <div class="filter-chip" onclick="filterMoim('진행중',this)">진행 중</div>
+        <div class="filter-chip" onclick="filterMoim('완료',this)">완료</div>
+      </div>
+      <div class="moim-list" id="moim-list"></div>
+    </div>
+
+    <!-- 모임 상세 -->
+    <div class="page" id="page-detail">
+      <div class="detail-back" onclick="navigate('moim')">← 모임 목록으로</div>
+      <div id="detail-content"></div>
+    </div>
+
+    <!-- 내 기록 -->
+    <div class="page" id="page-mybooks">
+      <div class="page-header">
+        <div>
+          <div class="page-title">내 기록</div>
+          <div class="page-sub">모임을 통해 읽은 책들</div>
+        </div>
+      </div>
+      <div id="mybooks-content"></div>
+    </div>
+
+    <!-- 통계 -->
+    <div class="page" id="page-stats">
+      <div class="page-header">
+        <div>
+          <div class="page-title">통계</div>
+          <div class="page-sub">모임별 교환독서 현황</div>
+        </div>
+      </div>
+      <div id="stats-content"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── 모임 만들기 모달 ── -->
+<div class="modal-backdrop" id="modal-create-moim" onclick="closeBackdrop(event,'modal-create-moim')">
+  <div class="modal">
+    <div class="modal-title">모임 만들기</div>
+
+    <div class="form-group">
+      <label class="form-label">모임 이름 *</label>
+      <input class="form-input" id="m-name" placeholder="예) 봄독서모임" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">최대 인원</label>
+        <select class="form-select" id="m-maxcount">
+          <option value="2">2명</option>
+          <option value="3">3명</option>
+          <option value="4" selected>4명</option>
+          <option value="5">5명</option>
+          <option value="6">6명</option>
+          <option value="8">8명</option>
+          <option value="10">10명</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">교환 주기</label>
+        <div class="cycle-input-row">
+          <input class="form-input" id="m-cycle" type="number" min="1" max="365" value="14" placeholder="14" />
+          <span style="font-size:13px;color:var(--muted);white-space:nowrap">일마다 교환</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">멤버 추가</label>
+      <div class="input-with-btn">
+        <input class="form-input" id="m-member-input" placeholder="이름 입력 후 추가" onkeydown="if(event.key==='Enter')addMember()" />
+        <button class="btn btn-sm btn-ghost" onclick="addMember()">추가</button>
+      </div>
+      <div class="tag-list" id="m-member-list"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">책 추가</label>
+      <div class="book-search-wrap">
+        <input class="form-input" id="m-book-input" placeholder="책 제목으로 검색..." autocomplete="off"
+          oninput="debounceSearch(this.value,'m-book-results','moim')"
+          onkeydown="handleSearchKey(event,'m-book-results','moim')" />
+        <div class="book-search-results" id="m-book-results"></div>
+      </div>
+      <div class="tag-list" id="m-book-list"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">시작일</label>
+      <input class="form-input" id="m-start" type="date" />
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-moim')">취소</button>
+      <button class="btn" onclick="saveMoim()">모임 만들기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 교환 실행 모달 ── -->
+<div class="modal-backdrop" id="modal-exchange" onclick="closeBackdrop(event,'modal-exchange')">
+  <div class="modal">
+    <div class="modal-title">교환 기록하기</div>
+    <div id="exchange-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-exchange')">취소</button>
+      <button class="btn" onclick="confirmExchange()">교환 완료</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 책 추가 모달 ── -->
+<div class="modal-backdrop" id="modal-add-book" onclick="closeBackdrop(event,'modal-add-book')">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">책 추가</div>
+    <div class="form-group">
+      <label class="form-label">책 제목으로 검색</label>
+      <div class="book-search-wrap">
+        <input class="form-input" id="ab-title" placeholder="책 제목으로 검색..." autocomplete="off"
+          oninput="debounceSearch(this.value,'ab-results','detail')"
+          onkeydown="handleSearchKey(event,'ab-results','detail')" />
+        <div class="book-search-results" id="ab-results"></div>
+      </div>
+    </div>
+    <div id="ab-selected" style="display:none;margin-bottom:16px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-book')">취소</button>
+      <button class="btn" onclick="saveAddBook()">추가</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── Supabase 설정 ────────────────────────────────────────
+// Supabase 프로젝트에서 발급받은 값으로 교체하세요
+const SUPABASE_URL = 'https://fyvapryghnhhlqeirtdt.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_oEs_wtT0rb_M-1JmL__a4w_U-y3PGlz';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── 데이터 ──────────────────────────────────────────────
+let moims = [];
+let moimFilter = 'all';
+
+async function loadMoims() {
+  const { data, error } = await sb.from('moims').select('data').order('created_at', { ascending: false });
+  if (error) { console.error(error); return; }
+  moims = (data || []).map(r => r.data);
+}
+
+async function upsertMoim(moim) {
+  const { error } = await sb.from('moims').upsert({ id: moim.id, data: moim });
+  if (error) console.error(error);
+}
+
+async function deleteMoimById(id) {
+  const { error } = await sb.from('moims').delete().eq('id', id);
+  if (error) console.error(error);
+  moims = moims.filter(m => m.id !== id);
+}
+
+// 임시 상태 (모달용)
+let tmpMembers = [];
+let tmpBooks = [];
+let currentMoimId = null;
+
+// ── 네비게이션 ───────────────────────────────────────────
+function navigate(page, moimId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navEl = document.querySelector(`[onclick="navigate('${page}')"]`);
+  if (navEl) navEl.classList.add('active');
+
+  if (page === 'home') renderHome();
+  if (page === 'moim') renderMoimList();
+  if (page === 'detail' && moimId) renderDetail(moimId);
+  if (page === 'mybooks') renderMyBooks();
+  if (page === 'stats') renderStats();
+
+  document.getElementById('cnt-moim').textContent = moims.filter(m => m.status === '진행중').length;
+}
+
+// ── 홈 ──────────────────────────────────────────────────
+function renderHome() {
+  const grid = document.getElementById('home-grid');
+  const active = moims.filter(m => m.status === '진행중');
+  if (!active.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="icon">👥</div>
+      <p>진행 중인 모임이 없어요.<br>첫 번째 모임을 만들어 보세요!</p>
+      <button class="btn" onclick="openCreateMoim()">+ 모임 만들기</button>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = active.map(m => {
+    const dday = nextExchangeDday(m);
+    const ddayClass = dday.n <= 2 ? 'dday-soon' : dday.n <= 5 ? 'dday-normal' : 'dday-ok';
+    const memberRows = m.members.map(mem => {
+      const bookId = m.currentHolder ? Object.keys(m.currentHolder).find(bid => m.currentHolder[bid] === mem.id) : null;
+      const book = bookId ? m.books.find(b => b.id === bookId) : null;
+      return `<div class="member-book-row">
+        <span class="member-name-sm">${esc(mem.name)}</span>
+        <span class="book-chip">${book ? esc(book.title) : '—'}</span>
+      </div>`;
+    }).join('');
+    return `<div class="moim-card" onclick="navigate('detail','${m.id}')">
+      <div class="moim-card-header">
+        <div class="moim-card-name">${esc(m.name)}</div>
+        <span class="dday-badge ${ddayClass}">${dday.label}</span>
+      </div>
+      <div class="moim-card-meta">
+        <div class="meta-item"><strong>${m.members.length}</strong>명</div>
+        <div class="meta-item"><strong>${m.books.length}</strong>권</div>
+        <div class="meta-item">주기 <strong>${m.cycleDays}</strong>일</div>
+      </div>
+      <div class="member-book-list">${memberRows}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── 모임 목록 ────────────────────────────────────────────
+function renderMoimList(filter) {
+  if (filter !== undefined) moimFilter = filter;
+  const list = document.getElementById('moim-list');
+  let items = moimFilter === 'all' ? moims : moims.filter(m => m.status === moimFilter);
+  document.getElementById('cnt-moim').textContent = moims.filter(m => m.status === '진행중').length;
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">👥</div><p>모임이 없어요.</p></div>`;
+    return;
+  }
+  list.innerHTML = items.map(m => `
+    <div class="moim-list-item" onclick="navigate('detail','${m.id}')">
+      <div>
+        <div class="moim-list-name">${esc(m.name)}</div>
+        <div class="moim-list-meta">${m.members.length}명 · ${m.books.length}권 · ${m.cycleDays}일 주기 · ${fmtDate(m.startDate)} 시작</div>
+      </div>
+      <span class="status-badge status-${m.status}">${m.status}</span>
+    </div>`).join('');
+}
+
+function filterMoim(f, el) {
+  document.querySelectorAll('#page-moim .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderMoimList(f);
+}
+
+// ── 모임 상세 ────────────────────────────────────────────
+function renderDetail(moimId) {
+  currentMoimId = moimId;
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+
+  const dday = nextExchangeDday(m);
+  const ddayClass = dday.n <= 2 ? 'dday-soon' : dday.n <= 5 ? 'dday-normal' : 'dday-ok';
+
+  // 순환 시각화
+  const cycleNodes = m.members.map((mem, i) => {
+    const bookId = m.currentHolder ? Object.keys(m.currentHolder).find(bid => m.currentHolder[bid] === mem.id) : null;
+    const book = bookId ? m.books.find(b => b.id === bookId) : null;
+    return `<div class="cycle-node">
+      <div class="cycle-node-name">${esc(mem.name)}</div>
+      <div class="cycle-node-book">${book ? esc(book.title) : '—'}</div>
+    </div>${i < m.members.length - 1 ? '<span class="cycle-arrow">→</span>' : '<span class="cycle-arrow" style="color:var(--accent)">↩</span>'}`;
+  }).join('');
+
+  // 멤버-책 현황 테이블
+  const holderRows = m.members.map(mem => {
+    const bookIds = m.currentHolder ? Object.keys(m.currentHolder).filter(bid => m.currentHolder[bid] === mem.id) : [];
+    const bookTitles = bookIds.map(bid => { const b = m.books.find(x => x.id === bid); return b ? esc(b.title) : ''; }).filter(Boolean);
+    return `<tr>
+      <td style="font-weight:500">${esc(mem.name)}</td>
+      <td>${bookTitles.length ? bookTitles.join(', ') : '<span style="color:var(--muted)">없음</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // 교환 이력
+  const logs = (m.exchanges || []).slice().reverse().slice(0, 10).map(e => {
+    const from = m.members.find(x => x.id === e.fromId);
+    const to = m.members.find(x => x.id === e.toId);
+    const book = m.books.find(x => x.id === e.bookId);
+    return `<div class="log-item">
+      <span class="log-date">${e.date}</span>
+      <span style="font-weight:500">${esc(book ? book.title : '?')}</span>
+      <span class="log-arrow">·</span>
+      <span>${esc(from ? from.name : '?')} → ${esc(to ? to.name : '?')}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;padding:8px 0">아직 교환 이력이 없어요</div>';
+
+  // 책 목록
+  const bookList = m.books.map(b => {
+    const holderId = m.currentHolder ? m.currentHolder[b.id] : null;
+    const holder = holderId ? m.members.find(x => x.id === holderId) : null;
+    return `<tr>
+      <td style="font-weight:500">${esc(b.title)}</td>
+      <td>${holder ? esc(holder.name) : '<span style="color:var(--muted)">미배정</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${esc(m.name)}</div>
+        <div class="detail-info-row">
+          <div class="detail-info-item"><strong>${m.members.length}</strong>명</div>
+          <div class="detail-info-item"><strong>${m.books.length}</strong>권</div>
+          <div class="detail-info-item">교환 주기 <strong>${m.cycleDays}일</strong></div>
+          <div class="detail-info-item">시작 <strong>${fmtDate(m.startDate)}</strong></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="dday-badge ${ddayClass}">${dday.label}</span>
+        <button class="btn btn-sm" onclick="openExchangeModal('${m.id}')">🔄 교환하기</button>
+        <button class="btn btn-sm btn-ghost" onclick="openAddBookModal('${m.id}')">+ 책 추가</button>
+        ${m.status === '진행중'
+          ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="closeMoim('${m.id}')">모임 종료</button>`
+          : '<span class="status-badge status-완료">완료된 모임</span>'}
+      </div>
+    </div>
+
+    <div class="section-title">순환 현황</div>
+    <div class="cycle-visual">${cycleNodes}</div>
+
+    <div class="section-title">책 현황</div>
+    <table class="holder-table">
+      <thead><tr><th>책 제목</th><th>현재 소지자</th></tr></thead>
+      <tbody>${bookList}</tbody>
+    </table>
+
+    <div class="section-title">멤버 현황</div>
+    <table class="holder-table">
+      <thead><tr><th>멤버</th><th>현재 소지 중인 책</th></tr></thead>
+      <tbody>${holderRows}</tbody>
+    </table>
+
+    <div class="section-title">교환 이력</div>
+    <div class="exchange-log">${logs}</div>
+  `;
+}
+
+// ── 모임 만들기 ──────────────────────────────────────────
+function openCreateMoim() {
+  tmpMembers = [];
+  tmpBooks = [];
+  tmpSelectedBook = null;
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-cycle').value = '14';
+  document.getElementById('m-member-input').value = '';
+  document.getElementById('m-book-input').value = '';
+  document.getElementById('m-book-results').classList.remove('open');
+  document.getElementById('m-start').value = todayStr();
+  document.getElementById('m-member-list').innerHTML = '';
+  document.getElementById('m-book-list').innerHTML = '';
+  openModal('modal-create-moim');
+}
+
+function addMember() {
+  const input = document.getElementById('m-member-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (tmpMembers.find(m => m.name === name)) { input.value = ''; return; }
+  tmpMembers.push({ id: uid(), name });
+  input.value = '';
+  renderTmpTags('m-member-list', tmpMembers, 'member');
+}
+
+function addBookToMoim() {
+  if (!tmpSelectedBook) return;
+  tmpBooks.push({ id: uid(), ...tmpSelectedBook });
+  tmpSelectedBook = null;
+  document.getElementById('m-book-input').value = '';
+  document.getElementById('m-book-results').classList.remove('open');
+  renderTmpTags('m-book-list', tmpBooks, 'book');
+}
+
+function renderTmpTags(containerId, arr, type) {
+  document.getElementById(containerId).innerHTML = arr.map(item => `
+    <div class="tag-item">
+      ${item.cover ? `<img class="tag-thumb" src="${item.cover}" alt="" />` : ''}
+      ${esc(item.name || item.title)}
+      <span class="tag-remove" onclick="removeTag('${item.id}','${type}')">×</span>
+    </div>`).join('');
+}
+
+function removeTag(id, type) {
+  if (type === 'member') tmpMembers = tmpMembers.filter(m => m.id !== id);
+  else tmpBooks = tmpBooks.filter(b => b.id !== id);
+  renderTmpTags(type === 'member' ? 'm-member-list' : 'm-book-list',
+    type === 'member' ? tmpMembers : tmpBooks, type);
+}
+
+async function saveMoim() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('모임 이름을 입력해주세요'); return; }
+  if (tmpMembers.length < 2) { alert('멤버를 2명 이상 추가해주세요'); return; }
+  if (tmpBooks.length < 1) { alert('책을 1권 이상 추가해주세요'); return; }
+
+  const cycle = parseInt(document.getElementById('m-cycle').value) || 14;
+  const startDate = document.getElementById('m-start').value || todayStr();
+
+  const currentHolder = {};
+  tmpBooks.forEach((book, i) => {
+    if (i < tmpMembers.length) currentHolder[book.id] = tmpMembers[i].id;
+  });
+
+  const moim = {
+    id: uid(),
+    name,
+    maxCount: parseInt(document.getElementById('m-maxcount').value),
+    cycleDays: cycle,
+    startDate,
+    lastExchangeDate: startDate,
+    members: tmpMembers,
+    books: tmpBooks,
+    currentHolder,
+    exchanges: [],
+    status: '진행중',
+    createdAt: new Date().toISOString()
+  };
+
+  await upsertMoim(moim);
+  moims.unshift(moim);
+  closeModal('modal-create-moim');
+  navigate('detail', moim.id);
+}
+
+// ── 교환하기 ────────────────────────────────────────────
+function openExchangeModal(moimId) {
+  currentMoimId = moimId;
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+
+  const bookOptions = m.books.map(b => `<option value="${b.id}">${esc(b.title)}</option>`).join('');
+  const memberOptions = m.members.map(mem => `<option value="${mem.id}">${esc(mem.name)}</option>`).join('');
+
+  document.getElementById('exchange-modal-body').innerHTML = `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">어떤 책이 누구에게서 누구에게로 이동했나요?</p>
+    <div class="exchange-form-row">
+      <span style="min-width:30px;color:var(--muted);font-size:12.5px">책</span>
+      <select id="ex-book">${bookOptions}</select>
+    </div>
+    <div class="exchange-form-row">
+      <span style="min-width:30px;color:var(--muted);font-size:12.5px">from</span>
+      <select id="ex-from">${memberOptions}</select>
+    </div>
+    <div class="exchange-form-row">
+      <span style="min-width:30px;color:var(--muted);font-size:12.5px">to</span>
+      <select id="ex-to">${memberOptions}</select>
+    </div>
+    <div class="exchange-form-row">
+      <span style="min-width:30px;color:var(--muted);font-size:12.5px">날짜</span>
+      <input type="date" id="ex-date" value="${todayStr()}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;outline:none" />
+    </div>
+  `;
+  openModal('modal-exchange');
+}
+
+async function confirmExchange() {
+  const m = moims.find(x => x.id === currentMoimId);
+  if (!m) return;
+  const bookId = document.getElementById('ex-book').value;
+  const fromId = document.getElementById('ex-from').value;
+  const toId = document.getElementById('ex-to').value;
+  const date = document.getElementById('ex-date').value;
+  if (fromId === toId) { alert('보내는 사람과 받는 사람이 같아요'); return; }
+
+  if (!m.currentHolder) m.currentHolder = {};
+  m.currentHolder[bookId] = toId;
+  m.lastExchangeDate = date;
+  if (!m.exchanges) m.exchanges = [];
+  m.exchanges.push({ bookId, fromId, toId, date });
+
+  await upsertMoim(m);
+  closeModal('modal-exchange');
+  renderDetail(currentMoimId);
+}
+
+// ── 책 추가 (상세에서) ───────────────────────────────────
+function openAddBookModal(moimId) {
+  currentMoimId = moimId;
+  tmpSelectedBook = null;
+  document.getElementById('ab-title').value = '';
+  document.getElementById('ab-results').classList.remove('open');
+  document.getElementById('ab-selected').style.display = 'none';
+  document.getElementById('ab-selected').innerHTML = '';
+  openModal('modal-add-book');
+}
+
+async function saveAddBook() {
+  const m = moims.find(x => x.id === currentMoimId);
+  if (!m) return;
+  if (!tmpSelectedBook) { alert('책을 검색해서 선택해주세요'); return; }
+  m.books.push({ id: uid(), ...tmpSelectedBook });
+  await upsertMoim(m);
+  closeModal('modal-add-book');
+  renderDetail(currentMoimId);
+}
+
+// ── 모임 종료 ────────────────────────────────────────────
+async function closeMoim(moimId) {
+  if (!confirm('모임을 종료할까요?')) return;
+  const m = moims.find(x => x.id === moimId);
+  if (m) { m.status = '완료'; await upsertMoim(m); }
+  navigate('moim');
+}
+
+// ── 내 기록 ──────────────────────────────────────────────
+function renderMyBooks() {
+  const el = document.getElementById('mybooks-content');
+  const allBooks = [];
+  moims.forEach(m => {
+    m.books.forEach(b => allBooks.push({ ...b, moimName: m.name, moimId: m.id, moimStatus: m.status }));
+  });
+  if (!allBooks.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📖</div><p>아직 기록된 책이 없어요</p></div>`;
+    return;
+  }
+  // 모임별 그룹
+  const grouped = {};
+  allBooks.forEach(b => {
+    if (!grouped[b.moimId]) grouped[b.moimId] = { name: b.moimName, books: [], status: b.moimStatus };
+    grouped[b.moimId].books.push(b);
+  });
+  el.innerHTML = Object.values(grouped).map(g => `
+    <div style="margin-bottom:28px">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        ${esc(g.name)} <span class="status-badge status-${g.status}" style="font-size:11px">${g.status}</span>
+      </div>
+      <div class="my-books-grid">
+        ${g.books.map(b => `
+          <div class="my-book-card" style="display:flex;gap:12px;align-items:flex-start">
+            ${b.cover ? `<img src="${b.cover}" style="width:44px;height:64px;object-fit:cover;border-radius:5px;flex-shrink:0" />` : `<div style="width:44px;height:64px;background:var(--bg);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📖</div>`}
+            <div class="my-book-title">${esc(b.title)}</div>
+            ${b.author ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(b.author)}</div>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── 통계 ────────────────────────────────────────────────
+function renderStats() {
+  const el = document.getElementById('stats-content');
+  const totalMoims = moims.length;
+  const activeMoims = moims.filter(m => m.status === '진행중').length;
+  const totalBooks = moims.reduce((s, m) => s + m.books.length, 0);
+  const totalEx = moims.reduce((s, m) => s + (m.exchanges || []).length, 0);
+
+  const moimRows = moims.map(m => `
+    <div class="moim-stat-item">
+      <div>
+        <div class="moim-stat-name">${esc(m.name)}</div>
+        <div class="moim-stat-sub">${m.cycleDays}일 주기 · ${fmtDate(m.startDate)} 시작</div>
+      </div>
+      <div class="moim-stat-nums">
+        <div class="stat-mini"><div class="stat-mini-num">${m.members.length}</div><div class="stat-mini-label">멤버</div></div>
+        <div class="stat-mini"><div class="stat-mini-num">${m.books.length}</div><div class="stat-mini-label">책</div></div>
+        <div class="stat-mini"><div class="stat-mini-num">${(m.exchanges||[]).length}</div><div class="stat-mini-label">교환</div></div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:13px">아직 모임이 없어요</div>';
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num">${totalMoims}</div><div class="stat-label">전체 모임</div></div>
+      <div class="stat-card"><div class="stat-num">${activeMoims}</div><div class="stat-label">진행 중</div></div>
+      <div class="stat-card"><div class="stat-num">${totalBooks}</div><div class="stat-label">총 등록 도서</div></div>
+      <div class="stat-card"><div class="stat-num">${totalEx}</div><div class="stat-label">총 교환 횟수</div></div>
+    </div>
+    <div class="section-title" style="margin-top:0">모임별 현황</div>
+    <div class="moim-stat-list">${moimRows}</div>
+  `;
+}
+
+// ── 책 검색 (네이버 API) ─────────────────────────────────
+let tmpSelectedBook = null;
+let searchTimer = null;
+
+function debounceSearch(query, resultsId, context) {
+  clearTimeout(searchTimer);
+  const el = document.getElementById(resultsId);
+  if (!query.trim()) { el.classList.remove('open'); return; }
+  el.innerHTML = '<div class="book-search-status">검색 중...</div>';
+  el.classList.add('open');
+  searchTimer = setTimeout(() => searchBooks(query, resultsId, context), 400);
+}
+
+async function searchBooks(query, resultsId, context) {
+  const el = document.getElementById(resultsId);
+  try {
+    const res = await fetch(`/api/books?q=${encodeURIComponent(query)}`);
+    const items = await res.json();
+    if (!res.ok) throw new Error(items.error || '검색 실패');
+    if (!items.length) {
+      el.innerHTML = '<div class="book-search-status">검색 결과가 없어요</div>';
+      return;
+    }
+    el.innerHTML = items.map((item, i) => {
+      const title = item.title.replace(/<[^>]+>/g, '');
+      const author = (item.author || '').replace(/<[^>]+>/g, '');
+      const cover = item.image || '';
+      return `<div class="book-result-item" onclick="selectBook(${i},'${resultsId}','${context}')" data-idx="${i}">
+        ${cover
+          ? `<img class="book-result-thumb" src="${cover}" alt="" />`
+          : `<div class="book-result-thumb-empty">📖</div>`}
+        <div class="book-result-info">
+          <div class="book-result-title">${esc(title)}</div>
+          <div class="book-result-author">${esc(author)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    el._items = items;
+  } catch (err) {
+    el.innerHTML = `<div class="book-search-status" style="color:#c0392b">${esc(err.message)}</div>`;
+  }
+}
+
+function selectBook(idx, resultsId, context) {
+  const el = document.getElementById(resultsId);
+  const raw = el._items?.[idx];
+  if (!raw) return;
+  const title = raw.title.replace(/<[^>]+>/g, '');
+  const author = (raw.author || '').replace(/<[^>]+>/g, '');
+  const cover = raw.image || '';
+  tmpSelectedBook = { title, author, cover };
+  el.classList.remove('open');
+
+  if (context === 'moim') {
+    document.getElementById('m-book-input').value = title;
+    addBookToMoim();
+  } else {
+    document.getElementById('ab-title').value = title;
+    const sel = document.getElementById('ab-selected');
+    sel.style.display = 'flex';
+    sel.style.alignItems = 'center';
+    sel.style.gap = '12px';
+    sel.style.padding = '12px 14px';
+    sel.style.background = 'var(--bg)';
+    sel.style.borderRadius = '8px';
+    sel.innerHTML = `
+      ${cover ? `<img style="width:36px;height:52px;object-fit:cover;border-radius:4px" src="${cover}" />` : '<div style="font-size:24px">📖</div>'}
+      <div>
+        <div style="font-size:13.5px;font-weight:600">${esc(title)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(author)}</div>
+      </div>`;
+  }
+}
+
+function handleSearchKey(e, resultsId, context) {
+  if (e.key === 'Escape') {
+    document.getElementById(resultsId).classList.remove('open');
+  }
+}
+
+// ── 유틸 ────────────────────────────────────────────────
+function nextExchangeDday(m) {
+  if (!m.lastExchangeDate || !m.cycleDays) return { label: '주기 없음', n: 999 };
+  const last = new Date(m.lastExchangeDate);
+  const next = new Date(last);
+  next.setDate(next.getDate() + m.cycleDays);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.ceil((next - today) / 86400000);
+  if (diff < 0) return { label: `D+${Math.abs(diff)} 지남`, n: 0 };
+  if (diff === 0) return { label: '오늘 교환일', n: 0 };
+  return { label: `교환까지 D-${diff}`, n: diff };
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  return str.replace(/-/g, '.').slice(0, 10);
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeBackdrop(e, id) { if (e.target.classList.contains('modal-backdrop')) closeModal(id); }
+
+// ── 초기 실행 ────────────────────────────────────────────
+async function initApp() {
+  document.getElementById('home-grid').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:40px 0">불러오는 중...</div>';
+  await loadMoims();
+  document.getElementById('cnt-moim').textContent = moims.filter(m => m.status === '진행중').length;
+  renderHome();
+}
+
+initApp();
+</script>
+</body>
+</html>
