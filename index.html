@@ -396,12 +396,8 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label">멤버 추가</label>
-      <div class="input-with-btn">
-        <input class="form-input" id="m-member-input" placeholder="이름 입력 후 추가" onkeydown="if(event.key==='Enter')addMember()" />
-        <button class="btn btn-sm btn-ghost" onclick="addMember()">추가</button>
-      </div>
-      <div class="tag-list" id="m-member-list"></div>
+      <label class="form-label">내 이름 *</label>
+      <input class="form-input" id="m-my-name" placeholder="모임에서 사용할 이름" />
     </div>
 
     <div class="form-group">
@@ -474,6 +470,31 @@
     <div class="modal-footer" style="justify-content:center">
       <button class="btn btn-ghost" onclick="closeModal('modal-join')">취소</button>
       <button class="btn" onclick="confirmJoin()">모임 합류하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 책 수정 모달 ── -->
+<div class="modal-backdrop" id="modal-edit-book" onclick="closeBackdrop(event,'modal-edit-book')">
+  <div class="modal" style="width:440px">
+    <div class="modal-title" id="edit-book-modal-title">책 수정</div>
+    <div class="form-group">
+      <label class="form-label">소지자 변경</label>
+      <select class="form-select" id="eb-holder"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">책 교체 (선택)</label>
+      <div class="book-search-wrap">
+        <input class="form-input" id="eb-title" placeholder="새 책 제목으로 검색..." autocomplete="off"
+          oninput="debounceSearch(this.value,'eb-results','edit')"
+          onkeydown="handleSearchKey(event,'eb-results','edit')" />
+        <div class="book-search-results" id="eb-results"></div>
+      </div>
+      <div id="eb-selected" style="display:none;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-book')">취소</button>
+      <button class="btn" onclick="saveEditBook()">저장</button>
     </div>
   </div>
 </div>
@@ -706,6 +727,9 @@ function renderDetail(moimId) {
     return `<tr>
       <td style="font-weight:500">${esc(b.title)}</td>
       <td>${holder ? esc(holder.name) : '<span style="color:var(--muted)">미배정</span>'}</td>
+      <td style="text-align:right;padding-right:12px">
+        <button class="btn btn-sm btn-ghost" onclick="openEditBookModal('${m.id}','${b.id}')">수정</button>
+      </td>
     </tr>`;
   }).join('');
 
@@ -744,7 +768,7 @@ function renderDetail(moimId) {
 
     <div class="section-title">책 현황</div>
     <table class="holder-table">
-      <thead><tr><th>책 제목</th><th>현재 소지자</th></tr></thead>
+      <thead><tr><th>책 제목</th><th>현재 소지자</th><th></th></tr></thead>
       <tbody>${bookList}</tbody>
     </table>
 
@@ -761,28 +785,16 @@ function renderDetail(moimId) {
 
 // ── 모임 만들기 ──────────────────────────────────────────
 function openCreateMoim() {
-  tmpMembers = [];
   tmpBooks = [];
   tmpSelectedBook = null;
   document.getElementById('m-name').value = '';
+  document.getElementById('m-my-name').value = '';
   document.getElementById('m-cycle').value = '14';
-  document.getElementById('m-member-input').value = '';
   document.getElementById('m-book-input').value = '';
   document.getElementById('m-book-results').classList.remove('open');
   document.getElementById('m-start').value = todayStr();
-  document.getElementById('m-member-list').innerHTML = '';
   document.getElementById('m-book-list').innerHTML = '';
   openModal('modal-create-moim');
-}
-
-function addMember() {
-  const input = document.getElementById('m-member-input');
-  const name = input.value.trim();
-  if (!name) return;
-  if (tmpMembers.find(m => m.name === name)) { input.value = ''; return; }
-  tmpMembers.push({ id: uid(), name });
-  input.value = '';
-  renderTmpTags('m-member-list', tmpMembers, 'member');
 }
 
 function addBookToMoim() {
@@ -812,17 +824,18 @@ function removeTag(id, type) {
 
 async function saveMoim() {
   const name = document.getElementById('m-name').value.trim();
+  const myName = document.getElementById('m-my-name').value.trim();
   if (!name) { alert('모임 이름을 입력해주세요'); return; }
-  if (tmpMembers.length < 2) { alert('멤버를 2명 이상 추가해주세요'); return; }
+  if (!myName) { alert('내 이름을 입력해주세요'); return; }
   if (tmpBooks.length < 1) { alert('책을 1권 이상 추가해주세요'); return; }
 
   const cycle = parseInt(document.getElementById('m-cycle').value) || 14;
   const startDate = document.getElementById('m-start').value || todayStr();
+  const creator = { id: uid(), name: myName };
 
+  // 첫 번째 책은 생성자에게 배정, 나머지는 미배정
   const currentHolder = {};
-  tmpBooks.forEach((book, i) => {
-    if (i < tmpMembers.length) currentHolder[book.id] = tmpMembers[i].id;
-  });
+  if (tmpBooks.length > 0) currentHolder[tmpBooks[0].id] = creator.id;
 
   const moim = {
     id: uid(),
@@ -831,7 +844,7 @@ async function saveMoim() {
     cycleDays: cycle,
     startDate,
     lastExchangeDate: startDate,
-    members: tmpMembers,
+    members: [creator],
     books: tmpBooks,
     currentHolder,
     exchanges: [],
@@ -916,6 +929,57 @@ async function saveAddBook() {
   m.books.push({ id: uid(), ...tmpSelectedBook });
   await upsertMoim(m);
   closeModal('modal-add-book');
+  renderDetail(currentMoimId);
+}
+
+// ── 책 수정 ─────────────────────────────────────────────
+let editingBookId = null;
+
+function openEditBookModal(moimId, bookId) {
+  currentMoimId = moimId;
+  editingBookId = bookId;
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  const book = m.books.find(b => b.id === bookId);
+  if (!book) return;
+
+  tmpSelectedBook = null;
+  document.getElementById('eb-title').value = '';
+  document.getElementById('eb-results').classList.remove('open');
+  const sel = document.getElementById('eb-selected');
+  sel.style.display = 'none';
+  sel.innerHTML = '';
+  document.getElementById('edit-book-modal-title').textContent = `"${book.title}" 수정`;
+
+  const currentHolderId = m.currentHolder?.[bookId] || '';
+  document.getElementById('eb-holder').innerHTML =
+    `<option value="">미배정</option>` +
+    m.members.map(mem =>
+      `<option value="${mem.id}" ${mem.id === currentHolderId ? 'selected' : ''}>${esc(mem.name)}</option>`
+    ).join('');
+
+  openModal('modal-edit-book');
+}
+
+async function saveEditBook() {
+  const m = moims.find(x => x.id === currentMoimId);
+  if (!m) return;
+
+  if (tmpSelectedBook) {
+    const idx = m.books.findIndex(b => b.id === editingBookId);
+    if (idx !== -1) m.books[idx] = { id: editingBookId, ...tmpSelectedBook };
+  }
+
+  if (!m.currentHolder) m.currentHolder = {};
+  const holderId = document.getElementById('eb-holder').value;
+  if (holderId) {
+    m.currentHolder[editingBookId] = holderId;
+  } else {
+    delete m.currentHolder[editingBookId];
+  }
+
+  await upsertMoim(m);
+  closeModal('modal-edit-book');
   renderDetail(currentMoimId);
 }
 
@@ -1128,15 +1192,20 @@ function selectBook(idx, resultsId, context) {
   if (context === 'moim') {
     document.getElementById('m-book-input').value = title;
     addBookToMoim();
+  } else if (context === 'edit') {
+    document.getElementById('eb-title').value = title;
+    const sel = document.getElementById('eb-selected');
+    sel.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:8px;';
+    sel.innerHTML = `
+      ${cover ? `<img style="width:36px;height:52px;object-fit:cover;border-radius:4px" src="${cover}" />` : '<div style="font-size:24px">📖</div>'}
+      <div>
+        <div style="font-size:13.5px;font-weight:600">${esc(title)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(author)}</div>
+      </div>`;
   } else {
     document.getElementById('ab-title').value = title;
     const sel = document.getElementById('ab-selected');
-    sel.style.display = 'flex';
-    sel.style.alignItems = 'center';
-    sel.style.gap = '12px';
-    sel.style.padding = '12px 14px';
-    sel.style.background = 'var(--bg)';
-    sel.style.borderRadius = '8px';
+    sel.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-radius:8px;margin-bottom:16px;';
     sel.innerHTML = `
       ${cover ? `<img style="width:36px;height:52px;object-fit:cover;border-radius:4px" src="${cover}" />` : '<div style="font-size:24px">📖</div>'}
       <div>
@@ -1151,6 +1220,9 @@ function handleSearchKey(e, resultsId, context) {
     document.getElementById(resultsId).classList.remove('open');
   }
 }
+
+// 임시 상태 — tmpMembers 제거 후 잔여 참조 방지
+let tmpMembers = [];
 
 // ── 유틸 ────────────────────────────────────────────────
 function nextExchangeDday(m) {
