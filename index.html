@@ -4,20 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>bookswap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #f7f5f2;
       --surface: #ffffff;
-      --border: #e8e4df;
+      --border: #e8e4e0;
       --text: #1a1a1a;
-      --muted: #8a8480;
+      --muted: #6b6460;
       --accent: #3d3530;
       --accent2: #6b5a4e;
       --green: #d4e8d4; --green-t: #3a6b3a;
       --blue: #d4dde8; --blue-t: #3a4f6b;
       --yellow: #fff3cd; --yellow-t: #856404;
       --red: #f8d7da; --red-t: #842029;
-      --font: 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+      --font: 'Inter', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
@@ -27,25 +30,34 @@
 
     /* ── 사이드바 ── */
     .sidebar {
-      background: var(--surface); border-right: 1px solid var(--border);
+      background: var(--accent);
       padding: 32px 0; position: sticky; top: 0; height: 100vh;
       display: flex; flex-direction: column;
     }
-    .logo { padding: 0 24px 32px; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--accent); }
+    .logo { padding: 0 24px 36px; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
     .nav-section { padding: 0 12px; flex: 1; }
-    .nav-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 0 12px; margin-bottom: 4px; margin-top: 20px; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 13.5px; transition: all .15s; user-select: none; }
-    .nav-item:hover { background: var(--bg); color: var(--text); }
-    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.35); padding: 0 12px; margin-bottom: 4px; margin-top: 20px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; color: rgba(255,255,255,.55); font-size: 13.5px; transition: all .15s; user-select: none; }
+    .nav-item:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.9); }
+    .nav-item.active { background: rgba(255,255,255,.14); color: #fff; font-weight: 600; }
     .nav-item .icon { font-size: 15px; width: 20px; text-align: center; }
-    .nav-count { margin-left: auto; background: var(--border); border-radius: 10px; padding: 1px 7px; font-size: 11px; color: var(--muted); }
-    .nav-item.active .nav-count { background: rgba(255,255,255,.2); color: #fff; }
+    .nav-count { margin-left: auto; background: rgba(255,255,255,.18); border-radius: 10px; padding: 1px 7px; font-size: 11px; color: rgba(255,255,255,.7); }
+    .nav-item.active .nav-count { background: rgba(255,255,255,.25); color: #fff; }
 
     /* ── 메인 ── */
-    .main { padding: 40px 48px; }
+    .main-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      height: 60px; display: flex; align-items: center; padding: 0 40px;
+      justify-content: space-between;
+    }
+    .topbar-title { font-size: 17px; font-weight: 700; letter-spacing: -.3px; color: var(--text); }
+    .topbar-actions { display: flex; gap: 8px; align-items: center; }
+    .main { padding: 36px 40px; flex: 1; }
     .page { display: none; }
     .page.active { display: block; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
     .page-title { font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
     .page-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
@@ -61,16 +73,16 @@
     .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
     .moim-card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-      padding: 24px; cursor: pointer; transition: all .15s;
+      padding: 20px 24px; cursor: pointer; transition: all .15s;
     }
-    .moim-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.07); }
-    .moim-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-    .moim-card-name { font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
-    .dday-badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
-    .dday-soon { background: var(--red); color: var(--red-t); }
-    .dday-normal { background: var(--yellow); color: var(--yellow-t); }
-    .dday-ok { background: var(--green); color: var(--green-t); }
-    .moim-card-meta { display: flex; gap: 16px; margin-bottom: 16px; }
+    .moim-card:hover { border-color: var(--accent2); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.07); }
+    .moim-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .moim-card-name { font-size: 16px; font-weight: 700; letter-spacing: -.3px; margin-top: 4px; }
+    .dday-badge { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 7px; white-space: nowrap; }
+    .dday-soon { background: #e85d4a; color: #fff; }
+    .dday-normal { background: #f5c842; color: #1a1a1a; }
+    .dday-ok { background: #4caf82; color: #fff; }
+    .moim-card-meta { display: flex; gap: 16px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
     .meta-item { font-size: 12.5px; color: var(--muted); }
     .meta-item strong { color: var(--text); font-weight: 600; }
     .member-book-list { display: flex; flex-direction: column; gap: 6px; }
@@ -227,11 +239,33 @@
     }
     .invite-actions { display: flex; gap: 8px; margin-left: auto; }
 
+    /* ── 모바일 탭바 ── */
+    .mobile-tabbar {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      background: var(--surface); border-top: 1px solid var(--border);
+      height: 64px; padding: 0 8px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .mobile-tabbar-inner { display: flex; height: 100%; }
+    .tab-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; cursor: pointer; color: var(--muted); font-size: 10px; transition: color .15s;
+      border-radius: 8px; padding: 6px 4px;
+    }
+    .tab-item:hover { color: var(--accent); }
+    .tab-item.active { color: var(--accent); }
+    .tab-item.active .tab-label { font-weight: 700; }
+    .tab-icon { font-size: 20px; line-height: 1; }
+    .tab-label { font-size: 10px; }
+
     @media (max-width: 768px) {
       .app { grid-template-columns: 1fr; }
       .sidebar { display: none; }
-      .main { padding: 24px 20px; }
+      .main { padding: 20px 16px 88px; }
+      .topbar { padding: 0 16px; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .my-books-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .mobile-tabbar { display: block; }
     }
   </style>
 </head>
@@ -240,91 +274,94 @@
 
   <!-- 사이드바 -->
   <aside class="sidebar">
-    <div class="logo">📚 bookswap</div>
+    <div class="logo">bookswap</div>
     <nav class="nav-section">
-      <div class="nav-label">메뉴</div>
-      <div class="nav-item active" onclick="navigate('home')">
-        <span class="icon">🏠</span> 홈
-      </div>
+      <div class="nav-item active" onclick="navigate('home')">홈</div>
       <div class="nav-item" onclick="navigate('moim')">
-        <span class="icon">👥</span> 모임
+        모임
         <span class="nav-count" id="cnt-moim">0</span>
       </div>
-      <div class="nav-item" onclick="navigate('mybooks')">
-        <span class="icon">📖</span> 내 기록
-      </div>
-      <div class="nav-item" onclick="navigate('stats')">
-        <span class="icon">📊</span> 통계
-      </div>
-      <div class="nav-label">참여</div>
-      <div class="nav-item" onclick="openEnterCode()">
-        <span class="icon">🔑</span> 코드로 참여
-      </div>
+      <div class="nav-item" onclick="navigate('mybooks')">내 기록</div>
+      <div class="nav-item" onclick="navigate('stats')">통계</div>
+      <div class="nav-label" style="margin-top:32px">참여</div>
+      <div class="nav-item" onclick="openEnterCode()">코드로 참여</div>
     </nav>
   </aside>
 
   <!-- 메인 -->
-  <main class="main">
+  <div class="main-wrapper">
+    <!-- 탑바 -->
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">홈</span>
+      <div class="topbar-actions" id="topbar-actions">
+        <button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>
+      </div>
+    </div>
 
-    <!-- 홈 -->
-    <div class="page active" id="page-home">
-      <div class="page-header">
-        <div>
-          <div class="page-title">안녕하세요 👋</div>
-          <div class="page-sub">진행 중인 모임의 교환 현황을 확인하세요</div>
+    <main class="main">
+
+      <!-- 홈 -->
+      <div class="page active" id="page-home">
+        <div class="home-grid" id="home-grid"></div>
+      </div>
+
+      <!-- 모임 목록 -->
+      <div class="page" id="page-moim">
+        <div class="page-header">
+          <div>
+            <div class="page-sub">교환독서 모임을 만들고 관리해요</div>
+          </div>
+          <button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>
         </div>
-        <button class="btn" onclick="openCreateMoim()">+ 모임 만들기</button>
-      </div>
-      <div class="home-grid" id="home-grid"></div>
-    </div>
-
-    <!-- 모임 목록 -->
-    <div class="page" id="page-moim">
-      <div class="page-header">
-        <div>
-          <div class="page-title">모임</div>
-          <div class="page-sub">교환독서 모임을 만들고 관리해요</div>
+        <div class="filter-bar">
+          <div class="filter-chip active" onclick="filterMoim('all',this)">전체</div>
+          <div class="filter-chip" onclick="filterMoim('진행중',this)">진행 중</div>
+          <div class="filter-chip" onclick="filterMoim('완료',this)">완료</div>
         </div>
-        <button class="btn" onclick="openCreateMoim()">+ 모임 만들기</button>
+        <div class="moim-list" id="moim-list"></div>
       </div>
-      <div class="filter-bar">
-        <div class="filter-chip active" onclick="filterMoim('all',this)">전체</div>
-        <div class="filter-chip" onclick="filterMoim('진행중',this)">진행 중</div>
-        <div class="filter-chip" onclick="filterMoim('완료',this)">완료</div>
+
+      <!-- 모임 상세 -->
+      <div class="page" id="page-detail">
+        <div class="detail-back" onclick="navigate('moim')">← 모임 목록으로</div>
+        <div id="detail-content"></div>
       </div>
-      <div class="moim-list" id="moim-list"></div>
-    </div>
 
-    <!-- 모임 상세 -->
-    <div class="page" id="page-detail">
-      <div class="detail-back" onclick="navigate('moim')">← 모임 목록으로</div>
-      <div id="detail-content"></div>
-    </div>
-
-    <!-- 내 기록 -->
-    <div class="page" id="page-mybooks">
-      <div class="page-header">
-        <div>
-          <div class="page-title">내 기록</div>
-          <div class="page-sub">모임을 통해 읽은 책들</div>
-        </div>
+      <!-- 내 기록 -->
+      <div class="page" id="page-mybooks">
+        <div id="mybooks-content"></div>
       </div>
-      <div id="mybooks-content"></div>
-    </div>
 
-    <!-- 통계 -->
-    <div class="page" id="page-stats">
-      <div class="page-header">
-        <div>
-          <div class="page-title">통계</div>
-          <div class="page-sub">모임별 교환독서 현황</div>
-        </div>
+      <!-- 통계 -->
+      <div class="page" id="page-stats">
+        <div id="stats-content"></div>
       </div>
-      <div id="stats-content"></div>
-    </div>
 
-  </main>
+    </main>
+  </div>
 </div>
+
+<!-- 모바일 탭바 -->
+<nav class="mobile-tabbar">
+  <div class="mobile-tabbar-inner">
+    <div class="tab-item active" id="tab-home" onclick="navigate('home')">
+      <span class="tab-icon">⊞</span>
+      <span class="tab-label">홈</span>
+    </div>
+    <div class="tab-item" id="tab-moim" onclick="navigate('moim')">
+      <span class="tab-icon">◎</span>
+      <span class="tab-label">모임</span>
+    </div>
+    <div class="tab-item" id="tab-mybooks" onclick="navigate('mybooks')">
+      <span class="tab-icon">▦</span>
+      <span class="tab-label">기록</span>
+    </div>
+    <div class="tab-item" id="tab-stats" onclick="navigate('stats')">
+      <span class="tab-icon">≋</span>
+      <span class="tab-label">통계</span>
+    </div>
+  </div>
+</nav>
 
 <!-- ── 모임 만들기 모달 ── -->
 <div class="modal-backdrop" id="modal-create-moim" onclick="closeBackdrop(event,'modal-create-moim')">
@@ -509,12 +546,40 @@ let tmpBooks = [];
 let currentMoimId = null;
 
 // ── 네비게이션 ───────────────────────────────────────────
+const PAGE_META = {
+  home:    { title: '홈',    tab: 'tab-home' },
+  moim:    { title: '모임',  tab: 'tab-moim' },
+  detail:  { title: '모임 상세', tab: 'tab-moim' },
+  mybooks: { title: '내 기록', tab: 'tab-mybooks' },
+  stats:   { title: '통계',  tab: 'tab-stats' },
+};
+
 function navigate(page, moimId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   const navEl = document.querySelector(`[onclick="navigate('${page}')"]`);
   if (navEl) navEl.classList.add('active');
+
+  // 탑바 타이틀
+  const meta = PAGE_META[page] || {};
+  const titleEl = document.getElementById('topbar-title');
+  if (titleEl) titleEl.textContent = meta.title || '';
+
+  // 탑바 액션: 홈·모임 페이지에서만 버튼 표시
+  const actionsEl = document.getElementById('topbar-actions');
+  if (actionsEl) {
+    actionsEl.innerHTML = (page === 'home' || page === 'moim')
+      ? `<button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>`
+      : '';
+  }
+
+  // 모바일 탭바 활성화
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  if (meta.tab) {
+    const tabEl = document.getElementById(meta.tab);
+    if (tabEl) tabEl.classList.add('active');
+  }
 
   if (page === 'home') renderHome();
   if (page === 'moim') renderMoimList();
@@ -594,6 +659,9 @@ function renderDetail(moimId) {
   currentMoimId = moimId;
   const m = moims.find(x => x.id === moimId);
   if (!m) return;
+
+  const titleEl = document.getElementById('topbar-title');
+  if (titleEl) titleEl.textContent = m.name;
 
   const dday = nextExchangeDday(m);
   const ddayClass = dday.n <= 2 ? 'dday-soon' : dday.n <= 5 ? 'dday-normal' : 'dday-ok';
