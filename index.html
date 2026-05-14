@@ -613,11 +613,22 @@ const MyMoims = {
   has(id) { return this.get().includes(id); }
 };
 
-// 모임별 내 멤버 ID 관리 (localStorage)
+// 모임별 내 멤버 ID 관리 (localStorage) — 삭제 권한 체크용
 const MyMember = {
   getAll() { try { return JSON.parse(localStorage.getItem('bs_my_members') || '{}'); } catch { return {}; } },
   get(moimId) { return this.getAll()[moimId] || null; },
   set(moimId, memberId) { const m = this.getAll(); m[moimId] = memberId; localStorage.setItem('bs_my_members', JSON.stringify(m)); }
+};
+
+// 메모 작성자 관리 (기기당 고유 ID + 이름)
+const MemoAuthor = {
+  getId() {
+    let id = localStorage.getItem('bs_memo_author_id');
+    if (!id) { id = uid(); localStorage.setItem('bs_memo_author_id', id); }
+    return id;
+  },
+  getName() { return localStorage.getItem('bs_memo_name') || ''; },
+  setName(name) { localStorage.setItem('bs_memo_name', name); }
 };
 
 async function loadMoims() {
@@ -1173,8 +1184,7 @@ function renderMemoHTML(m) {
     </div>`).join('');
 
   const memos = (m.memos?.[activeMemoBookId]) || [];
-  const myMemberId = MyMember.get(m.id);
-  const myMember = myMemberId ? m.members.find(x => x.id === myMemberId) : null;
+  const myAuthorId = MemoAuthor.getId();
 
   const memoItems = memos.length
     ? memos.slice().reverse().map(memo => `
@@ -1184,7 +1194,7 @@ function renderMemoHTML(m) {
           <div class="memo-header">
             <span class="memo-name">${esc(memo.memberName)}</span>
             <span class="memo-date">${fmtDate(memo.date)}</span>
-            ${memo.memberId === myMemberId
+            ${memo.authorId === myAuthorId
               ? `<span class="memo-del" onclick="deleteMemo('${m.id}','${activeMemoBookId}','${memo.id}')">삭제</span>`
               : ''}
           </div>
@@ -1193,23 +1203,16 @@ function renderMemoHTML(m) {
       </div>`).join('')
     : '<div class="memo-empty">아직 감상 메모가 없어요. 첫 번째로 남겨보세요!</div>';
 
-  const whoLine = myMember
-    ? `<div class="memo-who"><span>${esc(myMember.name)}</span>으로 작성</div>`
-    : `<div class="memo-who">나는
-        <select onchange="setMyIdentity('${m.id}',this.value)">
-          <option value="">— 선택 —</option>
-          ${m.members.map(mem => `<option value="${mem.id}">${esc(mem.name)}</option>`).join('')}
-        </select>
-      </div>`;
-
   return `
     <div class="section-title" style="margin-top:32px">책 감상 메모</div>
     <div class="memo-book-tabs">${tabs}</div>
     <div class="memo-list">${memoItems}</div>
-    ${whoLine}
-    <div class="memo-input-row">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input class="form-input" id="memo-name" placeholder="이름"
+        style="width:120px;flex-shrink:0"
+        value="${esc(MemoAuthor.getName())}" />
       <textarea class="memo-textarea" id="memo-input"
-        placeholder="이 책에 대한 감상을 자유롭게 남겨보세요..."
+        placeholder="감상을 자유롭게 남겨보세요... (Cmd+Enter로 등록)"
         onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))submitMemo('${m.id}','${activeMemoBookId}')"></textarea>
       <button class="btn btn-sm" onclick="submitMemo('${m.id}','${activeMemoBookId}')">등록</button>
     </div>`;
@@ -1221,29 +1224,24 @@ function switchMemoBook(moimId, bookId) {
   setTimeout(() => document.querySelector('.memo-list')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
 
-function setMyIdentity(moimId, memberId) {
-  if (!memberId) return;
-  MyMember.set(moimId, memberId);
-  renderDetail(moimId);
-}
 
 async function submitMemo(moimId, bookId) {
   const m = moims.find(x => x.id === moimId);
   if (!m) return;
-  const myMemberId = MyMember.get(moimId);
-  if (!myMemberId) { toast('먼저 내 이름을 선택해주세요'); return; }
-  const myMember = m.members.find(x => x.id === myMemberId);
-  if (!myMember) return;
 
+  const name = document.getElementById('memo-name')?.value.trim();
+  if (!name) { toast('이름을 입력해주세요'); return; }
   const text = document.getElementById('memo-input')?.value.trim();
   if (!text) { toast('내용을 입력해주세요'); return; }
+
+  MemoAuthor.setName(name);
 
   if (!m.memos) m.memos = {};
   if (!m.memos[bookId]) m.memos[bookId] = [];
   m.memos[bookId].push({
     id: uid(),
-    memberId: myMemberId,
-    memberName: myMember.name,
+    authorId: MemoAuthor.getId(),
+    memberName: name,
     text,
     date: todayStr()
   });
