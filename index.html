@@ -328,15 +328,22 @@
     <!-- 탑바 -->
     <div class="topbar">
       <span class="topbar-title" id="topbar-title">홈</span>
-      <div class="topbar-actions" id="topbar-actions">
-        <button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>
-      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
     </div>
 
     <main class="main">
 
       <!-- 홈 -->
       <div class="page active" id="page-home">
+        <div class="page-header">
+          <div>
+            <div class="page-sub">진행 중인 교환독서 모임</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="openEnterCode()">초대코드로 참가</button>
+            <button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>
+          </div>
+        </div>
         <div class="home-grid" id="home-grid"></div>
       </div>
 
@@ -346,7 +353,6 @@
           <div>
             <div class="page-sub">교환독서 모임을 만들고 관리해요</div>
           </div>
-          <button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>
         </div>
         <div class="filter-bar">
           <div class="filter-chip active" onclick="filterMoim('all',this)">전체</div>
@@ -635,13 +641,6 @@ function navigate(page, moimId) {
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = meta.title || '';
 
-  // 탑바 액션: 홈·모임 페이지에서만 버튼 표시
-  const actionsEl = document.getElementById('topbar-actions');
-  if (actionsEl) {
-    actionsEl.innerHTML = (page === 'home' || page === 'moim')
-      ? `<button class="btn btn-sm" onclick="openCreateMoim()">+ 모임 만들기</button>`
-      : '';
-  }
 
   // 모바일 탭바 활성화
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
