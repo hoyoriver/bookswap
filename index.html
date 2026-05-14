@@ -1413,10 +1413,7 @@ function renderMyPage() {
 
     const isEditing = editingMoimNameId === m.id;
     return `<div class="mypage-moim-row">
-      <div>
-        <div class="mypage-moim-title">${esc(m.name)}</div>
-        <div class="mypage-moim-status">${m.status} · ${m.members.length}명</div>
-      </div>
+      <div class="mypage-moim-title">${esc(m.name)}</div>
       ${isEditing
         ? `<div class="mypage-edit-row">
             <input class="form-input" id="moimname-input-${m.id}" value="${esc(myMember.name)}"
@@ -1441,7 +1438,7 @@ function renderMyPage() {
       </div>
 
       <div class="section-title" style="margin-top:0">기본 이름</div>
-      <div style="display:flex;gap:8px;max-width:320px;margin-bottom:32px">
+      <div style="display:flex;gap:8px;max-width:480px;margin-bottom:32px">
         <input class="form-input" id="default-name-input"
           value="${esc(defaultName)}" placeholder="이름을 입력하세요"
           onkeydown="if(event.key==='Enter')saveDefaultName()" />
