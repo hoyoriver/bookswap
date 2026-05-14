@@ -829,6 +829,9 @@ function renderDetail(moimId) {
         ${m.status === '진행중'
           ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="closeMoim('${m.id}')">모임 종료</button>`
           : '<span class="status-badge status-완료">완료된 모임</span>'}
+        ${MyMember.get(m.id) === m.members[0]?.id
+          ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="deleteMoim('${m.id}')">🗑 모임 삭제</button>`
+          : ''}
       </div>
     </div>
 
@@ -1258,12 +1261,19 @@ async function deleteMemo(moimId, bookId, memoId) {
   renderDetail(moimId);
 }
 
-// ── 모임 종료 ────────────────────────────────────────────
+// ── 모임 종료 / 삭제 ─────────────────────────────────────
 async function closeMoim(moimId) {
   if (!confirm('모임을 종료할까요?')) return;
   const m = moims.find(x => x.id === moimId);
   if (m) { m.status = '완료'; await upsertMoim(m); }
   navigate('moim');
+}
+
+async function deleteMoim(moimId) {
+  if (!confirm('모임을 삭제하면 모든 데이터가 사라져요.\n정말 삭제할까요?')) return;
+  await deleteMoimById(moimId);
+  navigate('moim');
+  toast('모임이 삭제됐어요');
 }
 
 // ── 내 기록 ──────────────────────────────────────────────
