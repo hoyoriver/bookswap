@@ -1,4 +1,4 @@
-const CACHE = 'bookswap-v8';
+const CACHE = 'bookswap-v9';
 const SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
