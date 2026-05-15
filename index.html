@@ -201,6 +201,18 @@
     .memo-input-row { display:flex; gap:8px; align-items:flex-end; }
     .memo-textarea { flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-family:var(--font); font-size:13.5px; resize:none; outline:none; line-height:1.5; min-height:64px; transition:border-color .15s; }
     .memo-textarea:focus { border-color:var(--accent); }
+    .memo-img-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+    .memo-img-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px; border:1px solid var(--border); background:var(--surface); font-size:12px; cursor:pointer; color:var(--muted); transition:all .15s; user-select:none; }
+    .memo-img-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .memo-img-preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .memo-img-preview-item { position:relative; }
+    .memo-img-preview-item img { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid var(--border); display:block; }
+    .memo-img-preview-remove { position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; background:#e74c3c; color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; }
+    .memo-imgs { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .memo-img-thumb { width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid var(--border); cursor:pointer; transition:opacity .15s; }
+    .memo-img-thumb:hover { opacity:.85; }
+    .memo-img-lightbox { position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9999; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .memo-img-lightbox img { max-width:92vw; max-height:88vh; border-radius:10px; object-fit:contain; }
 
     /* ── 빈 상태 ── */
     .empty-state { text-align: center; padding: 80px 0; color: var(--muted); }
@@ -748,6 +760,7 @@ let tmpMembers = [];
 let tmpBooks = [];
 let currentMoimId = null;
 let activeMemoBookId = null;
+let pendingMemoImages = []; // {file, previewUrl}
 
 // ── 네비게이션 ───────────────────────────────────────────
 const PAGE_META = {
@@ -1300,7 +1313,11 @@ function renderMemoHTML(m) {
               ? `<span class="memo-del" onclick="deleteMemo('${m.id}','${activeMemoBookId}','${memo.id}')">삭제</span>`
               : ''}
           </div>
-          <div class="memo-text">${esc(memo.text)}</div>
+          ${memo.text ? `<div class="memo-text">${esc(memo.text)}</div>` : ''}
+          ${(memo.images?.length) ? `
+            <div class="memo-imgs">
+              ${memo.images.map(url => `<img class="memo-img-thumb" src="${url}" loading="lazy" onclick="openImgLightbox('${url}')" />`).join('')}
+            </div>` : ''}
         </div>
       </div>`).join('')
     : '<div class="memo-empty">아직 감상 메모가 없어요. 첫 번째로 남겨보세요!</div>';
@@ -1314,6 +1331,16 @@ function renderMemoHTML(m) {
         </select>
       </div>`;
 
+  // 이미지 미리보기 (pendingMemoImages 전역 상태 반영)
+  const imgPreviewHTML = pendingMemoImages.length ? `
+    <div class="memo-img-preview" id="memo-img-preview">
+      ${pendingMemoImages.map((img, i) => `
+        <div class="memo-img-preview-item">
+          <img src="${img.previewUrl}" />
+          <span class="memo-img-preview-remove" onclick="removePendingImage(${i},'${m.id}','${activeMemoBookId}')">✕</span>
+        </div>`).join('')}
+    </div>` : '';
+
   return `
     <div class="section-title" style="margin-top:32px">책 감상 메모</div>
     <div class="memo-book-tabs">${tabs}</div>
@@ -1324,13 +1351,70 @@ function renderMemoHTML(m) {
         placeholder="감상을 자유롭게 남겨보세요... (Cmd+Enter로 등록)"
         onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))submitMemo('${m.id}','${activeMemoBookId}')"></textarea>
       <button class="btn btn-sm" onclick="submitMemo('${m.id}','${activeMemoBookId}')">등록</button>
-    </div>`;
+    </div>
+    <div class="memo-img-actions">
+      <label class="memo-img-btn">
+        📎 이미지 첨부
+        <input type="file" accept="image/*" multiple style="display:none"
+          onchange="addMemoImages(this,'${m.id}','${activeMemoBookId}')">
+      </label>
+      <label class="memo-img-btn">
+        📷 카메라 촬영
+        <input type="file" accept="image/*" capture="environment" style="display:none"
+          onchange="addMemoImages(this,'${m.id}','${activeMemoBookId}')">
+      </label>
+    </div>
+    ${imgPreviewHTML}`;
 }
 
 function switchMemoBook(moimId, bookId) {
   activeMemoBookId = bookId;
+  pendingMemoImages = []; // 탭 이동시 첨부 초기화
   renderDetail(moimId);
   setTimeout(() => document.querySelector('.memo-list')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+
+function addMemoImages(input, moimId, bookId) {
+  const files = Array.from(input.files || []);
+  files.forEach(file => {
+    const previewUrl = URL.createObjectURL(file);
+    pendingMemoImages.push({ file, previewUrl });
+  });
+  input.value = ''; // 같은 파일 재첨부 가능하도록 초기화
+  renderDetail(moimId);
+  setTimeout(() => document.getElementById('memo-input')?.focus(), 50);
+}
+
+function removePendingImage(index, moimId, bookId) {
+  URL.revokeObjectURL(pendingMemoImages[index]?.previewUrl);
+  pendingMemoImages.splice(index, 1);
+  renderDetail(moimId);
+}
+
+function openImgLightbox(url) {
+  const lb = document.createElement('div');
+  lb.className = 'memo-img-lightbox';
+  lb.innerHTML = `<img src="${url}" />`;
+  lb.onclick = () => lb.remove();
+  document.body.appendChild(lb);
+}
+
+async function uploadMemoImages(moimId) {
+  if (!pendingMemoImages.length) return [];
+  const urls = [];
+  for (const { file } of pendingMemoImages) {
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${moimId}/${uid()}.${ext}`;
+    const { error } = await sb.storage.from('memo-images').upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type
+    });
+    if (error) { toast(`이미지 업로드 실패: ${error.message}`); continue; }
+    const { data } = sb.storage.from('memo-images').getPublicUrl(path);
+    if (data?.publicUrl) urls.push(data.publicUrl);
+  }
+  return urls;
 }
 
 
@@ -1343,7 +1427,14 @@ async function submitMemo(moimId, bookId) {
   if (!myMember) return;
 
   const text = document.getElementById('memo-input')?.value.trim();
-  if (!text) { toast('내용을 입력해주세요'); return; }
+  if (!text && !pendingMemoImages.length) { toast('내용이나 이미지를 추가해주세요'); return; }
+
+  // 이미지 먼저 업로드
+  let imageUrls = [];
+  if (pendingMemoImages.length) {
+    toast('이미지 업로드 중...');
+    imageUrls = await uploadMemoImages(moimId);
+  }
 
   if (!m.memos) m.memos = {};
   if (!m.memos[bookId]) m.memos[bookId] = [];
@@ -1351,9 +1442,14 @@ async function submitMemo(moimId, bookId) {
     id: uid(),
     memberId: myMemberId,
     memberName: myMember.name,
-    text,
+    text: text || '',
+    images: imageUrls,
     date: todayStr()
   });
+
+  // 첨부 초기화
+  pendingMemoImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
+  pendingMemoImages = [];
 
   await upsertMoim(m);
   renderDetail(moimId);
@@ -1369,7 +1465,17 @@ function setMyIdentity(moimId, memberId) {
 async function deleteMemo(moimId, bookId, memoId) {
   const m = moims.find(x => x.id === moimId);
   if (!m?.memos?.[bookId]) return;
-  m.memos[bookId] = m.memos[bookId].filter(memo => memo.id !== memoId);
+  const memo = m.memos[bookId].find(x => x.id === memoId);
+  // Storage 이미지 삭제
+  if (memo?.images?.length) {
+    const paths = memo.images.map(url => {
+      const marker = '/memo-images/';
+      const idx = url.indexOf(marker);
+      return idx >= 0 ? url.slice(idx + marker.length) : null;
+    }).filter(Boolean);
+    if (paths.length) await sb.storage.from('memo-images').remove(paths);
+  }
+  m.memos[bookId] = m.memos[bookId].filter(x => x.id !== memoId);
   await upsertMoim(m);
   renderDetail(moimId);
 }
