@@ -858,7 +858,7 @@ function renderDetail(moimId) {
   currentMoimId = moimId;
   const m = moims.find(x => x.id === moimId);
   if (!m) return;
-  const isCreator = MyMember.get(m.id) === m.members[0]?.id;
+  const isCreator = MyMember.get(m.id) === (m.creatorId || m.members[0]?.id);
 
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = m.name;
@@ -1033,6 +1033,7 @@ async function saveMoim() {
     cycleDays: cycle,
     startDate,
     lastExchangeDate: startDate,
+    creatorId: creator.id,
     members: [creator],
     books: tmpBooks,
     currentHolder,
@@ -1412,13 +1413,13 @@ function renderMoimSettingsHTML(m) {
                <button class="btn btn-sm" onclick="saveMemberRename('${m.id}','${mem.id}')">저장</button>
                <button class="btn btn-sm btn-ghost" onclick="editingSettingsMemberId=null;refreshMoimSettings('${m.id}')">취소</button>
              </div>`
-          : `<div style="font-size:14px;font-weight:600">${esc(mem.name)}${idx === 0 ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">(생성자)</span>' : ''}</div>
+          : `<div style="font-size:14px;font-weight:600">${esc(mem.name)}${mem.id === (m.creatorId || m.members[0]?.id) ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">(생성자)</span>' : ''}</div>
              ${bookTitles.length ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${bookTitles.map(esc).join(', ')} 소지 중</div>` : ''}`
         }
       </div>
       ${!isEditing ? `<div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-sm btn-ghost" onclick="editingSettingsMemberId='${mem.id}';refreshMoimSettings('${m.id}')">이름 수정</button>
-        ${idx > 0 ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="kickMember('${m.id}','${mem.id}')">강퇴</button>` : ''}
+        ${mem.id !== (m.creatorId || m.members[0]?.id) ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="kickMember('${m.id}','${mem.id}')">강퇴</button>` : ''}
       </div>` : ''}
     </div>`;
   }).join('');
@@ -1489,7 +1490,8 @@ async function kickMember(moimId, memberId) {
   if (!member) return;
   if (!confirm(`"${member.name}"을(를) 모임에서 내보낼까요?\n해당 멤버가 소지한 책은 생성자에게 배정돼요.`)) return;
   // 소지 책 → 생성자에게 배정
-  const creatorId = m.members[0]?.id;
+  const creatorId = m.creatorId || m.members[0]?.id;
+  if (memberId === creatorId) { toast('생성자는 강퇴할 수 없어요'); return; }
   if (m.currentHolder && creatorId) {
     Object.keys(m.currentHolder).forEach(bookId => {
       if (m.currentHolder[bookId] === memberId) m.currentHolder[bookId] = creatorId;
