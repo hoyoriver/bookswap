@@ -224,6 +224,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', 
         <span class="s1-tag">Vercel</span>
         <span class="s1-tag">네이버 책 API</span>
       </div>
+      <div style="margin-top:24px;display:inline-flex;align-items:center;gap:8px;background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.35);border-radius:20px;padding:7px 16px;">
+        <span style="font-size:15px;">🤖</span>
+        <span style="font-size:12px;font-weight:600;color:rgba(255,220,120,.9);letter-spacing:.02em;">Developed with Claude Code</span>
+      </div>
     </div>
     <div style="position:absolute;bottom:36px;right:48px;font-size:11px;color:rgba(255,255,255,.3);font-weight:500;">bookswap-rose.vercel.app</div>
   </div>
@@ -782,27 +786,32 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', 
   <div class="slide-inner" style="background:var(--accent);padding:52px 64px;">
     <div style="height:100%;display:flex;flex-direction:column;justify-content:center">
       <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:12px">Tech Stack</div>
-      <div style="font-size:32px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:40px">단일 파일, 제로 빌드</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
-        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:24px 20px">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Frontend</div>
-          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Vanilla JS</div>
+      <div style="font-size:32px;font-weight:800;color:#fff;letter-spacing:-.5px;margin-bottom:28px">단일 파일, 제로 빌드</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:20px 16px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Frontend</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">Vanilla JS</div>
           <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5">단일 index.html<br>빌드 스텝 없음</div>
         </div>
-        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:24px 20px">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Database</div>
-          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Supabase</div>
+        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:20px 16px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Database</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">Supabase</div>
           <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5">PostgreSQL<br>JSONB 스키마</div>
         </div>
-        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:24px 20px">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Deploy</div>
-          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Vercel</div>
+        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:20px 16px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Deploy</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">Vercel</div>
           <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5">Static + Serverless<br>GitHub 자동 배포</div>
         </div>
-        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:24px 20px">
-          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">API</div>
-          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Naver Books</div>
+        <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:20px 16px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">API</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">Naver Books</div>
           <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5">책 검색·표지<br>Serverless 프록시</div>
+        </div>
+        <div style="background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.3);border-radius:14px;padding:20px 16px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,200,80,.6);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">AI Dev Tool</div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">🤖 Claude Code</div>
+          <div style="font-size:11px;color:rgba(255,220,120,.6);line-height:1.5">기획·개발·배포<br>전 과정 AI 페어 코딩</div>
         </div>
       </div>
     </div>
