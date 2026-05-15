@@ -928,6 +928,7 @@ function renderDetail(moimId) {
         <button class="btn btn-sm btn-ghost" onclick="openOrderModal('${m.id}')">순서 수정</button>
         <button class="btn btn-sm btn-ghost" onclick="openAddBookModal('${m.id}')">+ 책 추가</button>
         ${m.status === '완료' ? '<span class="status-badge status-완료">완료된 모임</span>' : ''}
+        ${isCreator && m.status === '진행중' ? `<button class="btn btn-sm btn-ghost" onclick="triggerManualRotate('${m.id}')">🔄 순환하기</button>` : ''}
         ${isCreator ? `<button class="btn btn-sm btn-ghost" onclick="openMoimSettings('${m.id}')">⚙️ 설정</button>` : ''}
       </div>
     </div>
@@ -1124,17 +1125,13 @@ async function saveAddBook() {
   renderDetail(currentMoimId);
 }
 
-// ── 자동 순환 ────────────────────────────────────────────
-async function triggerAutoRotate(moimId) {
+// ── 순환 공통 로직 ───────────────────────────────────────
+async function doRotate(moimId, date) {
   const m = moims.find(x => x.id === moimId);
   if (!m) return;
-  if (!confirm(`"${m.name}" 모임의 책을 순서대로 순환할까요?`)) return;
-
-  const today = todayStr();
   const members = m.members;
   if (!m.currentHolder) m.currentHolder = {};
 
-  // 각 멤버가 가진 책 → 다음 멤버에게 이동 (circular)
   const newHolder = {};
   members.forEach((mem, i) => {
     const nextMem = members[(i + 1) % members.length];
@@ -1142,7 +1139,7 @@ async function triggerAutoRotate(moimId) {
       if (holderId === mem.id) {
         newHolder[bookId] = nextMem.id;
         if (!m.exchanges) m.exchanges = [];
-        m.exchanges.push({ bookId, fromId: mem.id, toId: nextMem.id, date: today });
+        m.exchanges.push({ bookId, fromId: mem.id, toId: nextMem.id, date });
       }
     });
   });
@@ -1155,11 +1152,27 @@ async function triggerAutoRotate(moimId) {
   });
 
   m.currentHolder = { ...m.currentHolder, ...newHolder };
-  m.lastExchangeDate = today;
+  m.lastExchangeDate = date;
 
   await upsertMoim(m);
   renderDetail(moimId);
   toast('✅ 순환 처리 완료!');
+}
+
+// ── 자동 순환 (dday=0 배너) ───────────────────────────────
+async function triggerAutoRotate(moimId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  if (!confirm(`"${m.name}" 교환일이에요!\n지금 순환을 진행할까요?`)) return;
+  await doRotate(moimId, todayStr());
+}
+
+// ── 수동 순환 ────────────────────────────────────────────
+async function triggerManualRotate(moimId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  if (!confirm(`"${m.name}" 모임의 책을 지금 바로 순환할까요?\n교환 이력에 오늘 날짜로 기록돼요.`)) return;
+  await doRotate(moimId, todayStr());
 }
 
 // ── 순서 수정 ────────────────────────────────────────────
