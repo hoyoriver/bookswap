@@ -297,6 +297,19 @@
     .order-btn:disabled { opacity: .3; cursor: default; }
     .order-hint { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
 
+    /* ── 모임 설정 모달 ── */
+    .settings-section { border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .settings-section-title { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+    .settings-danger { border-color: #f8d7da; background: #fffafa; }
+    .member-manage-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .member-manage-row:last-child { border-bottom: none; }
+
+    /* ── 내 접속 코드 ── */
+    .mypage-code-card { background: var(--accent); border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .mypage-code-label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .mypage-code-display { font-size: 26px; font-weight: 800; letter-spacing: 6px; color: #fff; margin: 4px 0 6px; }
+    .mypage-code-hint { font-size: 12px; color: rgba(255,255,255,.55); max-width: 260px; line-height: 1.5; }
+
     /* ── 마이페이지 ── */
     .mypage-section { max-width: 520px; }
     .mypage-profile-card {
@@ -628,6 +641,35 @@
   </div>
 </div>
 
+<!-- ── 모임 설정 모달 (생성자 전용) ── -->
+<div class="modal-backdrop" id="modal-moim-settings" onclick="closeBackdrop(event,'modal-moim-settings')">
+  <div class="modal" style="width:500px">
+    <div class="modal-title">모임 설정</div>
+    <div id="moim-settings-content"></div>
+    <div class="modal-footer" style="border-top:1px solid var(--border);margin-top:4px;padding-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-moim-settings')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 코드 복원 모달 ── -->
+<div class="modal-backdrop" id="modal-restore" onclick="closeBackdrop(event,'modal-restore')">
+  <div class="modal" style="width:380px">
+    <div class="modal-title">코드로 복원하기</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6">다른 기기에서 사용하던 내 접속 코드를 입력하면 모임이 자동으로 복원돼요.<br><span style="color:#c0392b;font-weight:600">⚠️ 현재 기기의 접속 코드가 입력한 코드로 변경됩니다.</span></p>
+    <div class="form-group">
+      <label class="form-label">접속 코드 (8자리)</label>
+      <input class="form-input" id="restore-code-input" placeholder="예) ABCD1234"
+        style="text-align:center;font-size:20px;letter-spacing:4px;text-transform:uppercase"
+        maxlength="8" onkeydown="if(event.key==='Enter')submitRestoreCode()" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-restore')">취소</button>
+      <button class="btn" id="restore-btn" onclick="submitRestoreCode()">복원하기</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── Supabase 설정 ────────────────────────────────────────
@@ -659,6 +701,20 @@ const MyMember = {
   getAll() { try { return JSON.parse(localStorage.getItem('bs_my_members') || '{}'); } catch { return {}; } },
   get(moimId) { return this.getAll()[moimId] || null; },
   set(moimId, memberId) { const m = this.getAll(); m[moimId] = memberId; localStorage.setItem('bs_my_members', JSON.stringify(m)); }
+};
+
+// 내 접속 코드 관리 (8자리 자동 생성, 크로스 디바이스 복원용)
+const UserCode = {
+  _chars: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+  get() { return localStorage.getItem('bs_user_code') || ''; },
+  generate() {
+    let code = '';
+    for (let i = 0; i < 8; i++) code += this._chars[Math.floor(Math.random() * this._chars.length)];
+    localStorage.setItem('bs_user_code', code);
+    return code;
+  },
+  getOrCreate() { return this.get() || this.generate(); },
+  set(code) { localStorage.setItem('bs_user_code', code.toUpperCase().replace(/[^A-Z0-9]/g, '')); }
 };
 
 
@@ -802,6 +858,7 @@ function renderDetail(moimId) {
   currentMoimId = moimId;
   const m = moims.find(x => x.id === moimId);
   if (!m) return;
+  const isCreator = MyMember.get(m.id) === m.members[0]?.id;
 
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = m.name;
@@ -870,12 +927,8 @@ function renderDetail(moimId) {
         <span class="dday-badge ${ddayClass}">${dday.label}</span>
         <button class="btn btn-sm btn-ghost" onclick="openOrderModal('${m.id}')">순서 수정</button>
         <button class="btn btn-sm btn-ghost" onclick="openAddBookModal('${m.id}')">+ 책 추가</button>
-        ${m.status === '진행중'
-          ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="closeMoim('${m.id}')">모임 종료</button>`
-          : '<span class="status-badge status-완료">완료된 모임</span>'}
-        ${MyMember.get(m.id) === m.members[0]?.id
-          ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="deleteMoim('${m.id}')">🗑 모임 삭제</button>`
-          : ''}
+        ${m.status === '완료' ? '<span class="status-badge status-완료">완료된 모임</span>' : ''}
+        ${isCreator ? `<button class="btn btn-sm btn-ghost" onclick="openMoimSettings('${m.id}')">⚙️ 설정</button>` : ''}
       </div>
     </div>
 
@@ -967,7 +1020,7 @@ async function saveMoim() {
 
   const cycle = parseInt(document.getElementById('m-cycle').value) || 14;
   const startDate = document.getElementById('m-start').value || todayStr();
-  const creator = { id: uid(), name: myName };
+  const creator = { id: uid(), name: myName, userCode: UserCode.getOrCreate() };
 
   // 첫 번째 책은 생성자에게 배정, 나머지는 미배정
   const currentHolder = {};
@@ -1309,17 +1362,210 @@ async function deleteMemo(moimId, bookId, memoId) {
 
 // ── 모임 종료 / 삭제 ─────────────────────────────────────
 async function closeMoim(moimId) {
-  if (!confirm('모임을 종료할까요?')) return;
+  if (!confirm('모임을 종료할까요?\n교환이 중단되며 데이터는 보존돼요.')) return;
   const m = moims.find(x => x.id === moimId);
   if (m) { m.status = '완료'; await upsertMoim(m); }
+  closeModal('modal-moim-settings');
   navigate('moim');
+  toast('모임이 종료됐어요');
 }
 
 async function deleteMoim(moimId) {
   if (!confirm('모임을 삭제하면 모든 데이터가 사라져요.\n정말 삭제할까요?')) return;
   await deleteMoimById(moimId);
+  closeModal('modal-moim-settings');
   navigate('moim');
   toast('모임이 삭제됐어요');
+}
+
+// ── 모임 설정 모달 (생성자 전용) ──────────────────────────
+let editingSettingsMemberId = null;
+
+function openMoimSettings(moimId) {
+  currentMoimId = moimId;
+  editingSettingsMemberId = null;
+  refreshMoimSettings(moimId);
+  openModal('modal-moim-settings');
+}
+
+function refreshMoimSettings(moimId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  document.getElementById('moim-settings-content').innerHTML = renderMoimSettingsHTML(m);
+}
+
+function renderMoimSettingsHTML(m) {
+  // 멤버 목록
+  const memberRows = m.members.map((mem, idx) => {
+    const isEditing = editingSettingsMemberId === mem.id;
+    const bookIds = m.currentHolder
+      ? Object.keys(m.currentHolder).filter(bid => m.currentHolder[bid] === mem.id)
+      : [];
+    const bookTitles = bookIds.map(bid => m.books.find(b => b.id === bid)?.title).filter(Boolean);
+    return `<div class="member-manage-row">
+      <div style="flex:1">
+        ${isEditing
+          ? `<div style="display:flex;gap:8px;align-items:center">
+               <input class="form-input" id="setting-rename-${mem.id}" value="${esc(mem.name)}"
+                 style="width:140px;padding:6px 10px;font-size:13px"
+                 onkeydown="if(event.key==='Enter')saveMemberRename('${m.id}','${mem.id}')" />
+               <button class="btn btn-sm" onclick="saveMemberRename('${m.id}','${mem.id}')">저장</button>
+               <button class="btn btn-sm btn-ghost" onclick="editingSettingsMemberId=null;refreshMoimSettings('${m.id}')">취소</button>
+             </div>`
+          : `<div style="font-size:14px;font-weight:600">${esc(mem.name)}${idx === 0 ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">(생성자)</span>' : ''}</div>
+             ${bookTitles.length ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${bookTitles.map(esc).join(', ')} 소지 중</div>` : ''}`
+        }
+      </div>
+      ${!isEditing ? `<div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-sm btn-ghost" onclick="editingSettingsMemberId='${mem.id}';refreshMoimSettings('${m.id}')">이름 수정</button>
+        ${idx > 0 ? `<button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b" onclick="kickMember('${m.id}','${mem.id}')">강퇴</button>` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="settings-section">
+      <div class="settings-section-title">기본 정보</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">모임 이름</label>
+        <input class="form-input" id="settings-moim-name" value="${esc(m.name)}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">교환 주기</label>
+        <div class="cycle-input-row">
+          <input class="form-input" id="settings-cycle" type="number" min="1" max="365" value="${m.cycleDays}" />
+          <span style="font-size:13px;color:var(--muted);white-space:nowrap">일마다 교환</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-sm" onclick="saveMoimInfo('${m.id}')">저장</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">멤버 관리 · ${m.members.length}명</div>
+      <div>${memberRows}</div>
+    </div>
+
+    <div class="settings-section settings-danger">
+      <div class="settings-section-title" style="color:#c0392b">위험 구역</div>
+      ${m.status === '진행중' ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px">
+          <div>
+            <div style="font-size:13.5px;font-weight:600">모임 종료</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">데이터는 보존되며 교환이 중단돼요</div>
+          </div>
+          <button class="btn btn-sm btn-ghost" style="color:#c0392b;border-color:#c0392b;white-space:nowrap" onclick="closeMoim('${m.id}')">모임 종료</button>
+        </div>` : `<div style="font-size:13px;color:var(--muted);margin-bottom:14px">이미 종료된 모임이에요</div>`}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <div style="font-size:13.5px;font-weight:600">모임 삭제</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">삭제 후 복구가 불가능해요</div>
+        </div>
+        <button class="btn btn-sm btn-danger" style="white-space:nowrap" onclick="deleteMoim('${m.id}')">모임 삭제</button>
+      </div>
+    </div>`;
+}
+
+async function saveMoimInfo(moimId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  const name = document.getElementById('settings-moim-name').value.trim();
+  const cycle = parseInt(document.getElementById('settings-cycle').value);
+  if (!name) { toast('모임 이름을 입력해주세요'); return; }
+  if (!cycle || cycle < 1) { toast('교환 주기를 올바르게 입력해주세요'); return; }
+  m.name = name;
+  m.cycleDays = cycle;
+  await upsertMoim(m);
+  refreshMoimSettings(moimId);
+  renderDetail(moimId);
+  toast('모임 정보가 수정됐어요');
+}
+
+async function kickMember(moimId, memberId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  const member = m.members.find(x => x.id === memberId);
+  if (!member) return;
+  if (!confirm(`"${member.name}"을(를) 모임에서 내보낼까요?\n해당 멤버가 소지한 책은 생성자에게 배정돼요.`)) return;
+  // 소지 책 → 생성자에게 배정
+  const creatorId = m.members[0]?.id;
+  if (m.currentHolder && creatorId) {
+    Object.keys(m.currentHolder).forEach(bookId => {
+      if (m.currentHolder[bookId] === memberId) m.currentHolder[bookId] = creatorId;
+    });
+  }
+  m.members = m.members.filter(x => x.id !== memberId);
+  await upsertMoim(m);
+  editingSettingsMemberId = null;
+  refreshMoimSettings(moimId);
+  renderDetail(moimId);
+  toast(`${member.name}님을 내보냈어요`);
+}
+
+async function saveMemberRename(moimId, memberId) {
+  const m = moims.find(x => x.id === moimId);
+  if (!m) return;
+  const newName = document.getElementById(`setting-rename-${memberId}`)?.value.trim();
+  if (!newName) { toast('이름을 입력해주세요'); return; }
+  const idx = m.members.findIndex(x => x.id === memberId);
+  if (idx === -1) return;
+  m.members[idx].name = newName;
+  // 메모 memberName도 일괄 업데이트
+  if (m.memos) {
+    Object.values(m.memos).forEach(arr =>
+      arr.forEach(memo => { if (memo.memberId === memberId) memo.memberName = newName; })
+    );
+  }
+  await upsertMoim(m);
+  editingSettingsMemberId = null;
+  refreshMoimSettings(moimId);
+  renderDetail(moimId);
+  toast('이름이 수정됐어요');
+}
+
+// ── 코드로 모임 복원 ───────────────────────────────────────
+async function findMoimsByUserCode(userCode) {
+  const { data } = await sb.from('moims').select('data');
+  const all = (data || []).map(r => r.data);
+  return all.filter(m => (m.members || []).some(mem => mem.userCode === userCode));
+}
+
+function copyUserCode() {
+  const code = UserCode.getOrCreate();
+  navigator.clipboard.writeText(code).then(() => toast('접속 코드 복사됨!'));
+}
+
+function openRestoreModal() {
+  document.getElementById('restore-code-input').value = '';
+  openModal('modal-restore');
+}
+
+async function submitRestoreCode() {
+  const raw = document.getElementById('restore-code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (raw.length !== 8) { toast('8자리 코드를 입력해주세요'); return; }
+  const btn = document.getElementById('restore-btn');
+  btn.disabled = true; btn.textContent = '검색 중...';
+  try {
+    const found = await findMoimsByUserCode(raw);
+    if (!found.length) { toast('해당 코드로 등록된 모임을 찾을 수 없어요'); return; }
+    UserCode.set(raw);
+    let added = 0;
+    for (const m of found) {
+      MyMoims.add(m.id);
+      const member = m.members.find(mem => mem.userCode === raw);
+      if (member) { MyMember.set(m.id, member.id); added++; }
+    }
+    await loadMoims();
+    closeModal('modal-restore');
+    renderMyPage();
+    navigate('home');
+    toast(`${found.length}개 모임 복원 완료!`);
+  } catch (err) {
+    toast('오류: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '복원하기';
+  }
 }
 
 // ── 내 기록 ──────────────────────────────────────────────
@@ -1402,9 +1648,15 @@ function renderStats() {
 // ── 마이페이지 ─────────────────────────────────────────
 let editingMoimNameId = null;
 
+function formatUserCode(code) {
+  if (!code || code.length !== 8) return code || '--------';
+  return code.slice(0, 4) + '-' + code.slice(4);
+}
+
 function renderMyPage() {
   const el = document.getElementById('mypage-content');
   const defaultName = DefaultName.get();
+  const userCode = UserCode.getOrCreate();
 
   const moimRows = moims.map(m => {
     const myMemberId = MyMember.get(m.id);
@@ -1434,6 +1686,18 @@ function renderMyPage() {
         <div class="mypage-name-wrap">
           <div class="mypage-name">${defaultName || '이름을 설정해주세요'}</div>
           <div class="mypage-name-sub">기본 이름 · 모임 생성/합류 시 자동 입력</div>
+        </div>
+      </div>
+
+      <div class="mypage-code-card">
+        <div>
+          <div class="mypage-code-label">내 접속 코드</div>
+          <div class="mypage-code-display">${formatUserCode(userCode)}</div>
+          <div class="mypage-code-hint">다른 기기에서 이 코드를 입력하면 내 모임이 자동으로 복원돼요</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="copyUserCode()">코드 복사</button>
+          <button class="btn btn-sm btn-ghost" style="background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25)" onclick="openRestoreModal()">다른 기기 복원</button>
         </div>
       </div>
 
@@ -1520,7 +1784,7 @@ async function confirmJoin() {
   if (!name) { alert('이름을 입력해주세요'); return; }
   if (!joiningMoim) return;
 
-  const newMember = { id: uid(), name };
+  const newMember = { id: uid(), name, userCode: UserCode.getOrCreate() };
   joiningMoim.members.push(newMember);
   await upsertMoim(joiningMoim);
   MyMoims.add(joiningMoim.id);
@@ -1667,6 +1931,7 @@ function closeBackdrop(e, id) { if (e.target.classList.contains('modal-backdrop'
 
 // ── 초기 실행 ────────────────────────────────────────────
 async function initApp() {
+  UserCode.getOrCreate(); // 첫 방문 시 코드 자동 생성
   document.getElementById('home-grid').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:40px 0">불러오는 중...</div>';
 
   // 초대 링크 감지 (?join=CODE)
